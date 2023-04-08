@@ -1,11 +1,17 @@
 package com.example.ble_test_v13_0;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.recyclerview.widget.DividerItemDecoration;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothProfile;
+import android.graphics.Color;
 import android.os.Handler;
 
 import android.content.Context;
@@ -13,7 +19,9 @@ import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Looper;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -22,11 +30,13 @@ import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
 
+import android.widget.TextView;
 import android.widget.Toast;
 
 import static android.Manifest.permission.BLUETOOTH_SCAN;
 import static android.Manifest.permission.BLUETOOTH_CONNECT;
 import static android.view.View.INVISIBLE;
+import static android.view.View.VISIBLE;
 
 import java.util.ArrayList;
 
@@ -68,6 +78,15 @@ public class MainActivity extends AppCompatActivity {
     public String getmMyDevice() {
         return mMyDevice;
     }
+
+// TODO: move to some proper place
+    private RecyclerView servicesRecyclerView;
+    private RecyclerView.Adapter servicesAdapter;
+    ArrayList<ServiceModel> serviceModelArrayList = new ArrayList<>();
+    ArrayList<ArrayList<CharacteristicsModel>> characteristicsModelArrayList =
+            new ArrayList<ArrayList<CharacteristicsModel>>();
+    ArrayList<Boolean> characteristicsItemEnabledList = new ArrayList<>();
+    private RecyclerView.LayoutManager serviceLayoutManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -116,13 +135,14 @@ public class MainActivity extends AppCompatActivity {
         });
 
         connectButton = findViewById(R.id.connection_button);
-        connectButton.setVisibility(INVISIBLE);
+        connectButton.setVisibility(VISIBLE);
         connectButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 HandleBleConnection();
             }
         });
 
+        showGattProfiles();
     }
 
     // Function to check and request permission.
@@ -203,7 +223,7 @@ public class MainActivity extends AppCompatActivity {
                 if (detected_device.contains(mydev)){
                     System.out.println("My device detected!");
                     Toast.makeText(MainActivity.this, "My device detected!", Toast.LENGTH_SHORT).show();
-                    connectButton.setVisibility(View.VISIBLE);
+                    connectButton.setVisibility(VISIBLE);
                     connectButton.setText("Connect");
                     setmMyBTDevice(device);
                 }
@@ -251,14 +271,14 @@ public class MainActivity extends AppCompatActivity {
                 connectButton.setText("Connect");
                 connectButton.setVisibility(View.INVISIBLE);
 
-                startScanningButton.setVisibility(View.VISIBLE);
+                startScanningButton.setVisibility(VISIBLE);
             }
         }
     };
 
 
     public void HandleBleConnection() { // TODO: private ????????????????
-        if (connectButton.getVisibility() == View.VISIBLE) {
+        if (connectButton.getVisibility() == VISIBLE) {
             if (connectButton.getText() == "Connect"){
                 if (scanning == true) {
                     scanning = false;
@@ -275,5 +295,281 @@ public class MainActivity extends AppCompatActivity {
             }
 
         }
+    }
+
+    public class CharacteristicsModel {
+        private String characteristicsUUID;
+
+        public CharacteristicsModel(String characteristicsUUID) {
+            this.characteristicsUUID = characteristicsUUID;
+        }
+
+        public String getCharacteristicsUUID() {
+            return this.characteristicsUUID;
+        }
+    }
+
+    public class ServiceModel {
+        private String serviceName;
+        private String serviceUUID;
+
+        public ServiceModel(String serviceName, String serviceUUID) {
+            this.serviceName = serviceName;
+            this.serviceUUID = serviceUUID;
+        }
+
+        public String getServiceName() {
+            return this.serviceName;
+        }
+        public String getServiceUUID() {
+            return this.serviceUUID;
+        }
+    }
+
+    public class BTCharacteristicRecyclerViewAdapter extends RecyclerView.Adapter<BTCharacteristicRecyclerViewAdapter.ViewHolder> {
+
+        private ArrayList<CharacteristicsModel> CharacteristicsModelArrayList;
+        public Context context;
+
+        public BTCharacteristicRecyclerViewAdapter(ArrayList<CharacteristicsModel> characteristicsList, Context context) {
+            this.CharacteristicsModelArrayList = characteristicsList;
+            this.context = context;
+        }
+
+        @NonNull
+        @Override
+        public BTCharacteristicRecyclerViewAdapter.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view;
+            Context context = parent.getContext();
+            LayoutInflater inflater = LayoutInflater.from(context);
+
+            // Inflate the custom layout
+            //if(viewType == 1){
+            view = inflater.inflate(R.layout.recycle_characteristics_item_view, parent, false);
+            //}
+            return new BTCharacteristicRecyclerViewAdapter.ViewHolder(view);
+        }
+
+        public class ViewHolder extends RecyclerView.ViewHolder {
+            private final TextView characteristicsUUID;
+
+            public ViewHolder(View view) {
+                super(view);
+                // Define click listener for the ViewHolder's View
+
+                characteristicsUUID = (TextView) view.findViewById(R.id.char_uuid);
+            }
+
+            public TextView getCharacteristicsUUID() {
+                return characteristicsUUID;
+            }
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull BTCharacteristicRecyclerViewAdapter.ViewHolder holder, int position) {
+            // Get element from your dataset at this position and replace the
+            // contents of the view with that element
+            CharacteristicsModel characteristicsItem = CharacteristicsModelArrayList.get(position);
+            holder.getCharacteristicsUUID().setText(characteristicsItem.getCharacteristicsUUID());
+
+            System.out.println("\tCharacteristics bind!");
+        }
+
+        @Override
+        public int getItemCount() {
+            return CharacteristicsModelArrayList.size();
+        }
+    }
+    public class BTServicesRecyclerViewAdapter extends RecyclerView.Adapter<BTServicesRecyclerViewAdapter.ViewHolder>{
+
+        private ArrayList<ServiceModel> ServiceModelArrayList;
+        public Context context;
+
+        public BTServicesRecyclerViewAdapter(ArrayList<ServiceModel> serviceList, Context context) {
+            this.ServiceModelArrayList = serviceList;
+            this.context = context;
+        }
+
+        /*
+        * class RecycleAdapter(var mContext: Context, val list: MutableList<ParentData>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+
+        return if(viewType== Constants.PARENT){
+            val rowView: View = LayoutInflater.from(parent.context).inflate(R.layout.parent_row, parent,false)
+           GroupViewHolder(rowView)
+        } else {
+            val rowView: View = LayoutInflater.from(parent.context).inflate(R.layout.child_row, parent,false)
+           ChildViewHolder(rowView)
+        }
+    }        * */
+
+        public class ViewHolder extends RecyclerView.ViewHolder {
+            private final TextView serviceName;
+            private final TextView serviceUUID;
+            public RecyclerView characteristicsRecyclerView;
+            public ViewHolder(View view) {
+                super(view);
+                // Define click listener for the ViewHolder's View
+
+                serviceName = (TextView) view.findViewById(R.id.service_name);
+                serviceUUID = (TextView) view.findViewById(R.id.service_id);
+
+                characteristicsRecyclerView = itemView.findViewById(R.id.Characteristics_RecyclerView);
+            }
+
+            public TextView getServiceName() {
+                return serviceName;
+            }
+            public TextView getServiceUUID() {
+                return serviceUUID;
+            }
+        }
+
+        @NonNull
+        @Override
+        public BTServicesRecyclerViewAdapter.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view;
+            Context context = parent.getContext();
+            LayoutInflater inflater = LayoutInflater.from(context);
+
+            // Inflate the custom layout
+            //if(viewType == 1){
+                view = inflater.inflate(R.layout.recycle_service_item_view, parent, false);
+            //}
+            return new ViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+            // Get element from your dataset at this position and replace the
+            // contents of the view with that element
+            ServiceModel serviceItem = ServiceModelArrayList.get(position);
+            holder.getServiceName().setText(serviceItem.getServiceName());
+            holder.getServiceUUID().setText(serviceItem.getServiceUUID());
+
+            System.out.println("\tService bind to position: " + position + " cnt: " + characteristicsModelArrayList.size());
+
+            if ((characteristicsItemEnabledList.size() > position) &&
+                    (characteristicsItemEnabledList.get(position) == false)) {
+
+                if( (characteristicsModelArrayList.size() > position) &&
+                        (characteristicsModelArrayList.get(position) !=null) )
+                {
+                    ArrayList<CharacteristicsModel> CharPerServiceArrayList =
+                            new ArrayList<CharacteristicsModel>();
+
+                    CharPerServiceArrayList.addAll(characteristicsModelArrayList.get(position));
+                    characteristicsItemEnabledList.set(position, true);
+
+                    RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this.context, LinearLayoutManager.HORIZONTAL, false);
+                    holder.characteristicsRecyclerView.setLayoutManager(layoutManager);
+                    holder.characteristicsRecyclerView.setHasFixedSize(true);
+                    BTCharacteristicRecyclerViewAdapter characteristicsRecyclerViewAdapter =
+                            new BTCharacteristicRecyclerViewAdapter(CharPerServiceArrayList,
+                                                                    holder.characteristicsRecyclerView.getContext());
+
+                    holder.characteristicsRecyclerView.setAdapter(characteristicsRecyclerViewAdapter);
+                    characteristicsRecyclerViewAdapter.notifyDataSetChanged();
+                }
+            }
+
+        }
+
+        @Override
+        public int getItemCount() {
+            return ServiceModelArrayList.size();
+        }
+    }
+
+    private void showGattProfiles(){
+        serviceModelArrayList.add(new ServiceModel("PROFILE 1", "1234-4567"));
+        {
+            ArrayList<CharacteristicsModel> CharPerServiceArrayList =
+                    new ArrayList<CharacteristicsModel>();
+            CharPerServiceArrayList.add(new CharacteristicsModel("12345678"));
+            characteristicsModelArrayList.add(CharPerServiceArrayList);
+        }
+
+        serviceModelArrayList.add(new ServiceModel("PROFILE 2", "2345-5678"));
+        characteristicsModelArrayList.add(null);
+
+        serviceModelArrayList.add(new ServiceModel("PROFILE 3", "3456-6789"));
+        {
+            ArrayList<CharacteristicsModel> CharPerServiceArrayList =
+                    new ArrayList<CharacteristicsModel>();
+            CharPerServiceArrayList.add(new CharacteristicsModel("12345678"));
+            CharPerServiceArrayList.add(new CharacteristicsModel("87654321"));
+            characteristicsModelArrayList.add(CharPerServiceArrayList);
+        }
+        serviceModelArrayList.add(new ServiceModel("PROFILE 4", "1234-4567"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 5", "2345-5678"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 6", "3456-6789"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 7", "1234-4567"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 8", "2345-5678"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 9", "3456-6789"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 10", "1234-4567"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 11", "2345-5678"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 12", "3456-6789"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 13", "1234-4567"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 14", "2345-5678"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 15", "3456-6789"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 16", "1234-4567"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 17", "2345-5678"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 18", "3456-6789"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 19", "1234-4567"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 20", "2345-5678"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 21", "3456-6789"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 22", "1234-4567"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 23", "2345-5678"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 24", "3456-6789"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 25", "1234-4567"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 26", "2345-5678"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 27", "3456-6789"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 28", "1234-4567"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 29", "2345-5678"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 30", "3456-6789"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 31", "1234-4567"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 32", "2345-5678"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 33", "3456-6789"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 34", "1234-4567"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 35", "2345-5678"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 36", "3456-6789"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 37", "1234-4567"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 38", "2345-5678"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 39", "3456-6789"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 40", "1234-4567"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 41", "2345-5678"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 42", "3456-6789"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 43", "1234-4567"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 44", "2345-5678"));
+        serviceModelArrayList.add(new ServiceModel("PROFILE 45", "3456-6789"));
+
+        for (int i=0; i<serviceModelArrayList.size(); i++)
+        {
+            characteristicsItemEnabledList.add(false);
+        }
+
+        showGattProfilesInRecyclerView();
+    }
+
+    private void showGattProfilesInRecyclerView(){
+        // Show services in RecyclerView type of List view:
+        // One Parent RecyclerView (RV) for services
+        // Child RVs for each characteristics (created inside BTServicesRecyclerViewAdapter)
+        servicesRecyclerView = findViewById(R.id.Services_recyclerView);
+        servicesRecyclerView.setHasFixedSize(false);
+
+        serviceLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
+        servicesAdapter = new BTServicesRecyclerViewAdapter(serviceModelArrayList, MainActivity.this);
+        servicesRecyclerView.setLayoutManager(serviceLayoutManager);
+        servicesRecyclerView.setAdapter(servicesAdapter);
+
+        DividerItemDecoration mDividerItemDecoration = new DividerItemDecoration(servicesRecyclerView.getContext(),
+                LinearLayoutManager.VERTICAL); // TODO: any get-method available???
+        //mDividerItemDecoration.setDrawable();
+        servicesRecyclerView.addItemDecoration(mDividerItemDecoration);
+
+        servicesAdapter.notifyDataSetChanged();
     }
 }
