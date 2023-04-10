@@ -11,7 +11,7 @@
         android:layout_width="106dp"
         android:layout_height="48dp"
         android:text="Scan"
-        app:layout_constraintBottom_toTopOf="@id/Services_recyclerView"
+        app:layout_constraintBottom_toTopOf="@id/Services_expandableListView"
         tools:layout_editor_absoluteX="105dp" />
 
     <Button
@@ -23,10 +23,10 @@
         app:layout_constraintBottom_toBottomOf="@+id/scan_button"
         tools:layout_editor_absoluteX="106dp" />
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/Services_recyclerView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+    <android.widget.ExpandableListView
+        android:id="@+id/Services_expandableListView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:layout_marginStart="28dp"
         android:layout_marginTop="104dp"
         android:padding="10dp"
@@ -34,6 +34,9 @@
         android:scrollbars="horizontal|vertical"
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        android:indicatorLeft="?android:attr/expandableListPreferredItemIndicatorLeft"
+        android:divider="@android:color/darker_gray"
+        android:dividerHeight="0.5dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
