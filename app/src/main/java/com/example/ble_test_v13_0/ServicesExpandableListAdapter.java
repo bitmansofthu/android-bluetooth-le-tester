@@ -12,11 +12,11 @@ import java.util.ArrayList;
 
 public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     private Context context;
-    private ArrayList<MainActivity.ServiceModel> groupArrayList;
-    private ArrayList<ArrayList<MainActivity.CharacteristicsModel>> childArrayList;
+    private ArrayList<ServiceModel> groupArrayList;
+    private ArrayList<ArrayList<CharacteristicsModel>> childArrayList;
 
-    public ServicesExpandableListAdapter(Context context, ArrayList<MainActivity.ServiceModel> groupArrayList,
-                                         ArrayList<ArrayList<MainActivity.CharacteristicsModel>> childArrayList) {
+    public ServicesExpandableListAdapter(Context context, ArrayList<ServiceModel> groupArrayList,
+                                         ArrayList<ArrayList<CharacteristicsModel>> childArrayList) {
         this.context = context;
         this.groupArrayList = groupArrayList;
         this.childArrayList = childArrayList;
@@ -58,13 +58,13 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
 
     @Override
     public boolean hasStableIds() {
-        return false;
+        return false; //todo: true?
     }
 
     @Override
     public View getGroupView(int groupPosition, boolean isExpanded,
                              View convertView, ViewGroup parent) {
-        MainActivity.ServiceModel service = (MainActivity.ServiceModel) getGroup(groupPosition);
+        ServiceModel service = (ServiceModel) getGroup(groupPosition);
         String service_name = service.getServiceName();
         String service_uuid = service.getServiceUUID();
 
@@ -88,7 +88,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     @Override
     public View getChildView(int groupPosition, int childPosition, boolean isLastChild,
                              View convertView, ViewGroup parent) {
-        MainActivity.CharacteristicsModel characteristic = (MainActivity.CharacteristicsModel)getChild(groupPosition, childPosition);
+        CharacteristicsModel characteristic = (CharacteristicsModel)getChild(groupPosition, childPosition);
 
         if (convertView == null) {
             LayoutInflater layoutInflater = (LayoutInflater) this.context
