@@ -11,6 +11,7 @@ import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Handler;
 
 import android.content.Context;
@@ -132,8 +133,9 @@ public class MainActivity extends AppCompatActivity {
                 startScanning();
             }
         });
+        Intent service_activity_launch_intent =
+                new Intent(this, ServicesActivity.class);
 
-        Intent service_activity_launch_intent = new Intent(this, ServicesActivity.class);
         connectButton = findViewById(R.id.connection_button);
         connectButton.setVisibility(VISIBLE);
         connectButton.setOnClickListener(new View.OnClickListener() {
@@ -296,6 +298,8 @@ public class MainActivity extends AppCompatActivity {
 
         private ArrayList<DeviceModel> DeviceModelArrayList;
         public Context context;
+        private View.OnClickListener onClickListener;
+        public int selected_position = -1; // no selection by default
 
         public BTDevicesRecyclerViewAdapter(ArrayList<DeviceModel> DeviceList, Context context) {
             this.DeviceModelArrayList = DeviceList;
@@ -315,17 +319,38 @@ public class MainActivity extends AppCompatActivity {
             return new BTDevicesRecyclerViewAdapter.ViewHolder(view);
         }
 
-        public class ViewHolder extends RecyclerView.ViewHolder {
+        public class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener{
             private final TextView deviceAddress;
             private final TextView deviceName;
             //private final TextView deviceSignal;
 
             public ViewHolder(View view) {
                 super(view);
+
                 // Define click listener for the ViewHolder's View
+                view.setOnClickListener((View.OnClickListener) this);
+                //view.setOnLongClickListener((View.OnLongClickListener) this);
 
                 deviceAddress = (TextView) view.findViewById(R.id.device_mac_address);
                 deviceName = (TextView) view.findViewById(R.id.device_name);
+            }
+            @Override
+            public void onClick(View v) {
+                int position = getBindingAdapterPosition();
+                if (position >= RecyclerView.NO_POSITION) {
+                    //System.out.println("RV item " + position + " Clicked");
+
+                    /*
+                    if (selected_position == position){
+                        // unselect position, if this is item is clicked twice
+                        selected_position = -1;
+                    }*/
+
+                    // Updating old as well as new positions
+                    notifyItemChanged(selected_position);
+                    selected_position = position;
+                    notifyItemChanged(selected_position);
+                }
             }
 
             public TextView getDeviceAddress() {
@@ -347,6 +372,15 @@ public class MainActivity extends AppCompatActivity {
 
                 holder.getDeviceName().
                         setText(deviceItem.getBTDeviceName());
+
+                if (selected_position >= 0 && (selected_position == position)){
+                    holder.itemView.setBackgroundColor(Color.RED);
+                }
+                else {
+                    holder.itemView.setBackgroundColor(Color.GREEN);
+                }
+
+
             }
         }
 
@@ -376,6 +410,18 @@ public class MainActivity extends AppCompatActivity {
                 LinearLayoutManager.VERTICAL); // TODO: any get-method available???
         //mDividerItemDecoration.setDrawable();
         servicesRecyclerView.addItemDecoration(mDividerItemDecoration);
+
+        servicesRecyclerView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //Intent intent =
+//                        new Intent(MainActivity.this, EmployeeDetails.class);
+                // Passing the data to the
+                // EmployeeDetails Activity
+                System.out.println("RV item Clicked");
+                //startActivity(service_activity_launch_intent);
+            }
+        });
 
     }
 
