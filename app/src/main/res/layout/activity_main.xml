@@ -28,4 +28,19 @@
         app:layout_constraintStart_toStartOf="parent"
         tools:layout_editor_absoluteX="106dp" />
 
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/BT_Devices_RecyclerView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="40dp"
+        android:layout_marginTop="125dp"
+        android:background="#03F44F"
+        android:padding="10dp"
+        android:scrollbarStyle="outsideInset"
+        android:scrollbars="vertical"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/connection_button"
+        app:layout_constraintTop_toTopOf="parent" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

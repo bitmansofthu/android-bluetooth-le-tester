@@ -59,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
     Handler handler = new Handler(Looper.myLooper());
 
     ArrayList<BluetoothDevice> mLeDevices = new ArrayList<BluetoothDevice>(); //TODO: del !!
+    ArrayList<DeviceModel> mDevices = new ArrayList<DeviceModel>();
     String mMyDevice;
     BluetoothDevice mMyBTDevice;
 
@@ -123,6 +124,8 @@ public class MainActivity extends AppCompatActivity {
 
         setMyDevice("18:5E:0F:9C:D5:A0"); //Todo
 
+        createBTDevicesInRecyclerViewAdapter();
+
         startScanningButton = findViewById(R.id.scan_button);
         startScanningButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -130,13 +133,13 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Intent intent = new Intent(this, ServicesActivity.class);
+        Intent service_activity_launch_intent = new Intent(this, ServicesActivity.class);
         connectButton = findViewById(R.id.connection_button);
         connectButton.setVisibility(VISIBLE);
         connectButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 //HandleBleConnection(); //Todo
-                startActivity(intent);
+                startActivity(service_activity_launch_intent);
             }
         });
     }
@@ -204,16 +207,12 @@ public class MainActivity extends AppCompatActivity {
             public void onScanResult(int callbackType, ScanResult result) {
                 super.onScanResult(callbackType, result);
 
+                addDevice(result); // add device-details to Expanded List adapter
+
                 BluetoothDevice device = result.getDevice(); // TODO: move onto OnCreate??
                 int signal = result.getRssi();
-
                 System.out.println("BT address: " + device + " | rssi: " + signal);
 
-//                Toast.makeText(MainActivity.this, device.toString(), Toast.LENGTH_SHORT).show();
-                if( (mLeDevices == null) || (!mLeDevices.contains(device))) {
-                    //assert mLeDevices != null;
-                    mLeDevices.add(device);
-                }
                 String myDevice = getMyDevice();
                 String detected_device = device.toString();
                 if (detected_device.contains(myDevice)){
@@ -292,161 +291,84 @@ public class MainActivity extends AppCompatActivity {
 
         }
     }
-/*
-    public class BTCharacteristicRecyclerViewAdapter extends RecyclerView.Adapter<BTCharacteristicRecyclerViewAdapter.ViewHolder> {
 
-        private ArrayList<CharacteristicsModel> CharacteristicsModelArrayList;
+    public class BTDevicesRecyclerViewAdapter extends RecyclerView.Adapter<BTDevicesRecyclerViewAdapter.ViewHolder> {
+
+        private ArrayList<DeviceModel> DeviceModelArrayList;
         public Context context;
 
-        public BTCharacteristicRecyclerViewAdapter(ArrayList<CharacteristicsModel> characteristicsList, Context context) {
-            this.CharacteristicsModelArrayList = characteristicsList;
+        public BTDevicesRecyclerViewAdapter(ArrayList<DeviceModel> DeviceList, Context context) {
+            this.DeviceModelArrayList = DeviceList;
             this.context = context;
         }
 
         @NonNull
         @Override
-        public BTCharacteristicRecyclerViewAdapter.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        public BTDevicesRecyclerViewAdapter.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View view;
             Context context = parent.getContext();
             LayoutInflater inflater = LayoutInflater.from(context);
 
             // Inflate the custom layout
-            //if(viewType == 1){
-            view = inflater.inflate(R.layout.recycle_characteristics_item_view, parent, false);
-            //}
-            return new BTCharacteristicRecyclerViewAdapter.ViewHolder(view);
+            view = inflater.inflate(R.layout.recycle_device_item_view, parent, false);
+
+            return new BTDevicesRecyclerViewAdapter.ViewHolder(view);
         }
 
         public class ViewHolder extends RecyclerView.ViewHolder {
-            private final TextView characteristicsUUID;
+            private final TextView deviceAddress;
+            private final TextView deviceName;
+            //private final TextView deviceSignal;
 
             public ViewHolder(View view) {
                 super(view);
                 // Define click listener for the ViewHolder's View
 
-                characteristicsUUID = (TextView) view.findViewById(R.id.char_uuid);
+                deviceAddress = (TextView) view.findViewById(R.id.device_mac_address);
+                deviceName = (TextView) view.findViewById(R.id.device_name);
             }
 
-            public TextView getCharacteristicsUUID() {
-                return characteristicsUUID;
+            public TextView getDeviceAddress() {
+                return deviceAddress;
+            }
+            public TextView getDeviceName() {
+                return deviceName;
             }
         }
 
         @Override
-        public void onBindViewHolder(@NonNull BTCharacteristicRecyclerViewAdapter.ViewHolder holder, int position) {
+        public void onBindViewHolder(@NonNull BTDevicesRecyclerViewAdapter.ViewHolder holder, int position) {
             // Get element from your dataset at this position and replace the
             // contents of the view with that element
-            CharacteristicsModel characteristicsItem = CharacteristicsModelArrayList.get(position);
-            holder.getCharacteristicsUUID().setText(characteristicsItem.getCharacteristicsUUID());
+            if (this.DeviceModelArrayList != null){
+                DeviceModel deviceItem = DeviceModelArrayList.get(position);
+                holder.getDeviceAddress().
+                        setText(deviceItem.getBTDeviceAddress().toString());
 
-            System.out.println("\tCharacteristics bind!");
+                holder.getDeviceName().
+                        setText(deviceItem.getBTDeviceName());
+            }
         }
 
         @Override
         public int getItemCount() {
-            return CharacteristicsModelArrayList.size();
+            if (this.DeviceModelArrayList == null){
+                return 0;
+            }
+            return this.DeviceModelArrayList.size();
         }
+
     }
-    public class BTServicesRecyclerViewAdapter extends RecyclerView.Adapter<BTServicesRecyclerViewAdapter.ViewHolder>{
-
-        private ArrayList<ServiceModel> ServiceModelArrayList;
-        public Context context;
-
-        public BTServicesRecyclerViewAdapter(ArrayList<ServiceModel> serviceList, Context context) {
-            this.ServiceModelArrayList = serviceList;
-            this.context = context;
-        }
 
 
-        public class ViewHolder extends RecyclerView.ViewHolder {
-            private final TextView serviceName;
-            private final TextView serviceUUID;
-            public RecyclerView characteristicsRecyclerView;
-            public ViewHolder(View view) {
-                super(view);
-                // Define click listener for the ViewHolder's View
-
-                serviceName = (TextView) view.findViewById(R.id.service_name);
-                serviceUUID = (TextView) view.findViewById(R.id.service_id);
-
-                characteristicsRecyclerView = itemView.findViewById(R.id.Characteristics_RecyclerView);
-            }
-
-            public TextView getServiceName() {
-                return serviceName;
-            }
-            public TextView getServiceUUID() {
-                return serviceUUID;
-            }
-        }
-
-        @NonNull
-        @Override
-        public BTServicesRecyclerViewAdapter.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View view;
-            Context context = parent.getContext();
-            LayoutInflater inflater = LayoutInflater.from(context);
-
-            // Inflate the custom layout
-            //if(viewType == 1){
-                view = inflater.inflate(R.layout.recycle_service_item_view, parent, false);
-            //}
-            return new ViewHolder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-            // Get element from your dataset at this position and replace the
-            // contents of the view with that element
-            ServiceModel serviceItem = ServiceModelArrayList.get(position);
-            holder.getServiceName().setText(serviceItem.getServiceName());
-            holder.getServiceUUID().setText(serviceItem.getServiceUUID());
-
-            System.out.println("\tService bind to position: " + position + " cnt: " + characteristicsModelArrayList.size());
-
-            if ((characteristicsItemEnabledList.size() > position) &&
-                    (characteristicsItemEnabledList.get(position) == false)) {
-
-                if( (characteristicsModelArrayList.size() > position) &&
-                        (characteristicsModelArrayList.get(position) !=null) )
-                {
-                    ArrayList<CharacteristicsModel> CharPerServiceArrayList =
-                            new ArrayList<CharacteristicsModel>();
-
-                    CharPerServiceArrayList.addAll(characteristicsModelArrayList.get(position));
-                    characteristicsItemEnabledList.set(position, true);
-
-                    RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this.context, LinearLayoutManager.HORIZONTAL, false);
-                    holder.characteristicsRecyclerView.setLayoutManager(layoutManager);
-                    holder.characteristicsRecyclerView.setHasFixedSize(true);
-                    BTCharacteristicRecyclerViewAdapter characteristicsRecyclerViewAdapter =
-                            new BTCharacteristicRecyclerViewAdapter(CharPerServiceArrayList,
-                                                                    holder.characteristicsRecyclerView.getContext());
-
-                    holder.characteristicsRecyclerView.setAdapter(characteristicsRecyclerViewAdapter);
-                    characteristicsRecyclerViewAdapter.notifyDataSetChanged();
-                }
-            }
-
-        }
-
-        @Override
-        public int getItemCount() {
-            return ServiceModelArrayList.size();
-        }
-    }
-*/
-
-    /*
-    private void showGattProfilesInRecyclerView(){
-        // Show services in RecyclerView type of List view:
-        // One Parent RecyclerView (RV) for services
-        // Child RVs for each characteristics (created inside BTServicesRecyclerViewAdapter)
-        servicesRecyclerView = findViewById(R.id.Services_recyclerView);
-        servicesRecyclerView.setHasFixedSize(true);
+    private void createBTDevicesInRecyclerViewAdapter(){
+        // Show BT devices in RecyclerView type of List view:
+        servicesRecyclerView = findViewById(R.id.BT_Devices_RecyclerView);
+        servicesRecyclerView.setHasFixedSize(false);
 
         serviceLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
-        servicesAdapter = new BTServicesRecyclerViewAdapter(serviceModelArrayList, MainActivity.this);
+
+        servicesAdapter = new BTDevicesRecyclerViewAdapter(mDevices, MainActivity.this);
         servicesRecyclerView.setLayoutManager(serviceLayoutManager);
         servicesRecyclerView.setAdapter(servicesAdapter);
 
@@ -455,7 +377,26 @@ public class MainActivity extends AppCompatActivity {
         //mDividerItemDecoration.setDrawable();
         servicesRecyclerView.addItemDecoration(mDividerItemDecoration);
 
-        servicesAdapter.notifyDataSetChanged();
     }
-    */
+
+    public void addDevice(ScanResult result) {
+        DeviceModel device =
+                new DeviceModel(result.getDevice(),
+                        "unknown",
+                        result.getRssi());
+
+        /*Toast.makeText(MainActivity.this,
+                device.getBTDeviceAddress().toString(),
+                Toast.LENGTH_SHORT).show();*/
+
+        if( (mLeDevices == null) ||
+                (!mLeDevices.contains(device.getBTDeviceAddress()))) {
+
+            mLeDevices.add(device.getBTDeviceAddress());
+            mDevices.add(device);
+
+            servicesAdapter.notifyDataSetChanged();
+        }
+    }
+
 }

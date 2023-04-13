@@ -71,7 +71,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
         if (convertView == null) {
             LayoutInflater layoutInflater = (LayoutInflater) this.context.
                     getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            convertView = layoutInflater.inflate(R.layout.services_list_group, null);
+            convertView = layoutInflater.inflate(R.layout.list_service_item_view, null);
         }
         TextView ServiceNameTextListView = (TextView) convertView
                 .findViewById(R.id.service_group_name);
@@ -93,7 +93,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
         if (convertView == null) {
             LayoutInflater layoutInflater = (LayoutInflater) this.context
                     .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            convertView = layoutInflater.inflate(R.layout.list_item_view, null);
+            convertView = layoutInflater.inflate(R.layout.list_characteristic_item_view, null);
         }
         TextView CharUuidExpandedView = (TextView) convertView
                 .findViewById(R.id.expanded_characteristic_list_item);

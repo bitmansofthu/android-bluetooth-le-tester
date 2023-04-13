@@ -22,7 +22,7 @@
         android:paddingLeft="?android:attr/expandableListPreferredItemPaddingLeft"
         android:paddingTop="10dp"
         android:paddingBottom="10dp"
-        android:text="UUID"
+        android:text="uuid"
         android:textColor="@android:color/black"
         android:textSize="16sp" />
 
