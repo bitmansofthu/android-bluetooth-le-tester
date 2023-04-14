@@ -86,6 +86,10 @@ public class MainActivity extends AppCompatActivity {
 
     private RecyclerView.LayoutManager serviceLayoutManager;
 
+    // Index of the selected device in RecyclerView
+    // (no selection by default)
+    private int selected_device_position = -1;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -144,6 +148,7 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(service_activity_launch_intent);
             }
         });
+
     }
 
     // Function to check and request permission.
@@ -298,12 +303,14 @@ public class MainActivity extends AppCompatActivity {
 
         private ArrayList<DeviceModel> DeviceModelArrayList;
         public Context context;
-        private View.OnClickListener onClickListener;
-        public int selected_position = -1; // no selection by default
+        final private RVItemDeviceOnClickListener onClickListener;
 
-        public BTDevicesRecyclerViewAdapter(ArrayList<DeviceModel> DeviceList, Context context) {
+        public BTDevicesRecyclerViewAdapter(ArrayList<DeviceModel> DeviceList,
+                                            RVItemDeviceOnClickListener onClickListener,
+                                            Context context) {
             this.DeviceModelArrayList = DeviceList;
             this.context = context;
+            this.onClickListener = onClickListener;
         }
 
         @NonNull
@@ -334,22 +341,13 @@ public class MainActivity extends AppCompatActivity {
                 deviceAddress = (TextView) view.findViewById(R.id.device_mac_address);
                 deviceName = (TextView) view.findViewById(R.id.device_name);
             }
+
             @Override
             public void onClick(View v) {
                 int position = getBindingAdapterPosition();
+
                 if (position >= RecyclerView.NO_POSITION) {
-                    //System.out.println("RV item " + position + " Clicked");
-
-                    /*
-                    if (selected_position == position){
-                        // unselect position, if this is item is clicked twice
-                        selected_position = -1;
-                    }*/
-
-                    // Updating old as well as new positions
-                    notifyItemChanged(selected_position);
-                    selected_position = position;
-                    notifyItemChanged(selected_position);
+                    onClickListener.onClick(position);
                 }
             }
 
@@ -373,14 +371,12 @@ public class MainActivity extends AppCompatActivity {
                 holder.getDeviceName().
                         setText(deviceItem.getBTDeviceName());
 
-                if (selected_position >= 0 && (selected_position == position)){
-                    holder.itemView.setBackgroundColor(Color.RED);
+                if (selected_device_position >= 0 && (selected_device_position == position)){
+                    holder.itemView.setBackgroundColor(Color.CYAN);
                 }
                 else {
-                    holder.itemView.setBackgroundColor(Color.GREEN);
+                    holder.itemView.setBackgroundColor(Color.YELLOW);
                 }
-
-
             }
         }
 
@@ -391,7 +387,6 @@ public class MainActivity extends AppCompatActivity {
             }
             return this.DeviceModelArrayList.size();
         }
-
     }
 
 
@@ -402,7 +397,28 @@ public class MainActivity extends AppCompatActivity {
 
         serviceLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
 
-        servicesAdapter = new BTDevicesRecyclerViewAdapter(mDevices, MainActivity.this);
+        // Applying OnClickListener to RecyclerView adapter
+        RVItemDeviceOnClickListener rVItemDeviceOnClickListener=
+                new RVItemDeviceOnClickListener() {
+            @Override
+            public void onClick(int position) {
+            /*      if (selected_position == position){
+                        // unselect position, if this is item is clicked twice
+                        selected_position = -1;
+            }*/
+
+                // Updating old as well as new positions
+                servicesAdapter.notifyItemChanged(selected_device_position);
+                selected_device_position = position;
+                servicesAdapter.notifyItemChanged(selected_device_position);
+
+            }
+        };
+
+        servicesAdapter = new BTDevicesRecyclerViewAdapter(mDevices,
+                rVItemDeviceOnClickListener,
+                MainActivity.this);
+
         servicesRecyclerView.setLayoutManager(serviceLayoutManager);
         servicesRecyclerView.setAdapter(servicesAdapter);
 
@@ -411,18 +427,6 @@ public class MainActivity extends AppCompatActivity {
         //mDividerItemDecoration.setDrawable();
         servicesRecyclerView.addItemDecoration(mDividerItemDecoration);
 
-        servicesRecyclerView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                //Intent intent =
-//                        new Intent(MainActivity.this, EmployeeDetails.class);
-                // Passing the data to the
-                // EmployeeDetails Activity
-                System.out.println("RV item Clicked");
-                //startActivity(service_activity_launch_intent);
-            }
-        });
-
     }
 
     public void addDevice(ScanResult result) {
@@ -430,10 +434,6 @@ public class MainActivity extends AppCompatActivity {
                 new DeviceModel(result.getDevice(),
                         "unknown",
                         result.getRssi());
-
-        /*Toast.makeText(MainActivity.this,
-                device.getBTDeviceAddress().toString(),
-                Toast.LENGTH_SHORT).show();*/
 
         if( (mLeDevices == null) ||
                 (!mLeDevices.contains(device.getBTDeviceAddress()))) {
