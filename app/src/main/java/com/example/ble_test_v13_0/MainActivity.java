@@ -81,14 +81,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
 // TODO: move to some proper place
-    private RecyclerView servicesRecyclerView;
-    private RecyclerView.Adapter servicesAdapter;
+    private RecyclerView devicesRecyclerView;
+    private RecyclerView.Adapter devicesAdapter;
 
-    private RecyclerView.LayoutManager serviceLayoutManager;
+    private RecyclerView.LayoutManager deviceLayoutManager;
 
     // Index of the selected device in RecyclerView
     // (no selection by default)
-    private int selected_device_position = -1;
+    public int selected_device_position = RecyclerView.NO_POSITION;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -141,11 +141,11 @@ public class MainActivity extends AppCompatActivity {
                 new Intent(this, ServicesActivity.class);
 
         connectButton = findViewById(R.id.connection_button);
-        connectButton.setVisibility(VISIBLE);
+        connectButton.setVisibility(INVISIBLE);
         connectButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                //HandleBleConnection(); //Todo
-                startActivity(service_activity_launch_intent);
+                //startActivity(service_activity_launch_intent);
+                HandleBleConnection(100);
             }
         });
 
@@ -214,21 +214,11 @@ public class MainActivity extends AppCompatActivity {
             public void onScanResult(int callbackType, ScanResult result) {
                 super.onScanResult(callbackType, result);
 
-                addDevice(result); // add device-details to Expanded List adapter
+                addDevice(result); // add device-details to RecyclerView List adapter
 
                 BluetoothDevice device = result.getDevice(); // TODO: move onto OnCreate??
                 int signal = result.getRssi();
                 System.out.println("BT address: " + device + " | rssi: " + signal);
-
-                String myDevice = getMyDevice();
-                String detected_device = device.toString();
-                if (detected_device.contains(myDevice)){
-                    System.out.println("My device detected!");
-                    Toast.makeText(MainActivity.this, "My device detected!", Toast.LENGTH_SHORT).show();
-                    connectButton.setVisibility(VISIBLE);
-                    connectButton.setText("Connect");
-                    setMyBTDevice(device);
-                }
             }
         };
 
@@ -237,6 +227,16 @@ public class MainActivity extends AppCompatActivity {
         if (scanning == false) {
             scanning = true;
             startScanningButton.setText("Stop scan");
+
+            // start scanning by cleaning device-list
+            if (mLeDevices != null){
+                int deviceCnt = mLeDevices.size();
+                mLeDevices.removeAll(mLeDevices);
+                mDevices.removeAll(mDevices);
+                devicesAdapter.notifyItemRangeRemoved(0, deviceCnt);
+                selected_device_position = RecyclerView.NO_POSITION;
+            }
+
             btLeScanner.startScan(leScanCallback);
 
             // Stops scanning after a predefined scan period.
@@ -264,7 +264,13 @@ public class MainActivity extends AppCompatActivity {
                 // successfully connected to the GATT Server
                 System.out.println("Connected to My device!");
                 //Toast.makeText(MainActivity.this, "Connected to My device!", Toast.LENGTH_SHORT).show();
-                connectButton.setText("Disconnect");
+                //connectButton.setText("Disconnect");
+
+                // Start Services-activity
+                Intent service_activity_launch_intent =
+                        new Intent(MainActivity.this, ServicesActivity.class);
+
+                startActivity(service_activity_launch_intent);
 
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 // disconnected from the GATT Server
@@ -279,7 +285,7 @@ public class MainActivity extends AppCompatActivity {
     };
 
 
-    public void HandleBleConnection() { // TODO: private ????????????????
+    public void HandleBleConnection(int device_index) { // TODO: private ????????????????
         if (connectButton.getVisibility() == VISIBLE) {
             if (connectButton.getText() == "Connect"){
                 if (scanning == true) {
@@ -288,8 +294,11 @@ public class MainActivity extends AppCompatActivity {
                     startScanningButton.setVisibility(View.INVISIBLE);
                     btLeScanner.stopScan(leScanCallback);
                 }
+
                 connectButton.setText("Connecting");
-                btGatt = getMyBTDevice().connectGatt(MainActivity.this, false, gattCallback);
+                btGatt = mDevices.get(device_index).getBTDeviceAddress().
+                        connectGatt(MainActivity.this,
+                                false, gattCallback);
             }
             else if (connectButton.getText() == "Disconnect"){
                 connectButton.setText("Disconnecting");
@@ -371,7 +380,8 @@ public class MainActivity extends AppCompatActivity {
                 holder.getDeviceName().
                         setText(deviceItem.getBTDeviceName());
 
-                if (selected_device_position >= 0 && (selected_device_position == position)){
+                if (selected_device_position != RecyclerView.NO_POSITION
+                        && (selected_device_position == position)){
                     holder.itemView.setBackgroundColor(Color.CYAN);
                 }
                 else {
@@ -392,40 +402,48 @@ public class MainActivity extends AppCompatActivity {
 
     private void createBTDevicesInRecyclerViewAdapter(){
         // Show BT devices in RecyclerView type of List view:
-        servicesRecyclerView = findViewById(R.id.BT_Devices_RecyclerView);
-        servicesRecyclerView.setHasFixedSize(false);
+        devicesRecyclerView = findViewById(R.id.BT_Devices_RecyclerView);
+        devicesRecyclerView.setHasFixedSize(false);
 
-        serviceLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
+        deviceLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
 
         // Applying OnClickListener to RecyclerView adapter
         RVItemDeviceOnClickListener rVItemDeviceOnClickListener=
                 new RVItemDeviceOnClickListener() {
             @Override
             public void onClick(int position) {
-            /*      if (selected_position == position){
-                        // unselect position, if this is item is clicked twice
-                        selected_position = -1;
-            }*/
-
-                // Updating old as well as new positions
-                servicesAdapter.notifyItemChanged(selected_device_position);
-                selected_device_position = position;
-                servicesAdapter.notifyItemChanged(selected_device_position);
-
+                if (selected_device_position == position) {
+                    // Selected device item is clicked again.
+                    // Start to connect to remote device using
+                    // MAC-address of device-item.
+                    HandleBleConnection(selected_device_position);
+                }
+                else {
+                    // Some other item selected.
+                    // Update old as well as new position.
+                    int previous_selected_device_position = selected_device_position;
+                    selected_device_position = position;
+                    devicesAdapter.notifyItemChanged(previous_selected_device_position);
+                    devicesAdapter.notifyItemChanged(selected_device_position);
+                    System.out.println("prev: " +
+                            previous_selected_device_position + " new: " + selected_device_position);
+                    connectButton.setVisibility(VISIBLE);
+                    connectButton.setText("Connect");
+                }
             }
         };
 
-        servicesAdapter = new BTDevicesRecyclerViewAdapter(mDevices,
+        devicesAdapter = new BTDevicesRecyclerViewAdapter(mDevices,
                 rVItemDeviceOnClickListener,
                 MainActivity.this);
 
-        servicesRecyclerView.setLayoutManager(serviceLayoutManager);
-        servicesRecyclerView.setAdapter(servicesAdapter);
+        devicesRecyclerView.setLayoutManager(deviceLayoutManager);
+        devicesRecyclerView.setAdapter(devicesAdapter);
 
-        DividerItemDecoration mDividerItemDecoration = new DividerItemDecoration(servicesRecyclerView.getContext(),
+        DividerItemDecoration mDividerItemDecoration = new DividerItemDecoration(devicesRecyclerView.getContext(),
                 LinearLayoutManager.VERTICAL); // TODO: any get-method available???
         //mDividerItemDecoration.setDrawable();
-        servicesRecyclerView.addItemDecoration(mDividerItemDecoration);
+        devicesRecyclerView.addItemDecoration(mDividerItemDecoration);
 
     }
 
@@ -441,7 +459,7 @@ public class MainActivity extends AppCompatActivity {
             mLeDevices.add(device.getBTDeviceAddress());
             mDevices.add(device);
 
-            servicesAdapter.notifyDataSetChanged();
+            devicesAdapter.notifyDataSetChanged();
         }
     }
 
