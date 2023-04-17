@@ -3,32 +3,24 @@ package com.example.ble_test_v13_0;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-import androidx.recyclerview.widget.DividerItemDecoration;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
-import android.graphics.Color;
-import android.os.Handler;
 
 import android.content.Context;
 import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.os.Looper;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
-import android.bluetooth.le.BluetoothLeScanner;
-import android.bluetooth.le.ScanCallback;
-import android.bluetooth.le.ScanResult;
 
 import android.widget.TextView;
 import android.widget.Toast;
@@ -38,34 +30,43 @@ import static android.Manifest.permission.BLUETOOTH_CONNECT;
 import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
 
+
 import java.util.ArrayList;
+
+enum BT_CONNECTION_STATE {
+    NOT_SCANNING,
+    SCANNING,
+    CONNECTING,
+    CONNECTED,
+    CONNECTING_FAILED,
+    DISCONNECTING,
+    DISCONNECTED
+}
 
 public class MainActivity extends AppCompatActivity {
 
     BluetoothManager btManager;
     BluetoothAdapter btAdapter;
-    BluetoothLeScanner btLeScanner;
+
     BluetoothGatt btGatt;
 
     final int REQUEST_ENABLE_BT = 1;
-    Button startScanningButton;
     Button connectButton;
-    boolean scanning = false;
-    // Stops scanning after 10 seconds.
-    static final long SCAN_PERIOD = 100000;
-    // Definine Permission codes for Scan and Connect.
+    // Define Permission codes for Scan and Connect.
     // Give any value but unique for each permission...
     private static final int BT_SCAN_PERMISSION_CODE = 100;
     private static final int BT_CONNECT_PERMISSION_CODE = 101;
-    Handler handler = new Handler(Looper.myLooper());
 
-    ArrayList<BluetoothDevice> mLeDevices = new ArrayList<BluetoothDevice>(); //TODO: del !!
-    ArrayList<DeviceModel> mDevices = new ArrayList<DeviceModel>();
+    public BT_CONNECTION_STATE mConnectionState = BT_CONNECTION_STATE.NOT_SCANNING;
+
     String mMyDevice;
     BluetoothDevice mMyBTDevice;
 
     public void setMyDevice(String mMyDevice) {
         this.mMyDevice = mMyDevice;
+    }
+    public String getMyDevice() {
+        return mMyDevice;
     }
 
     public void setMyBTDevice(BluetoothDevice mMyDevice) {
@@ -76,28 +77,30 @@ public class MainActivity extends AppCompatActivity {
         return this.mMyBTDevice;
     }
 
-    public String getMyDevice() {
-        return mMyDevice;
-    }
-
-// TODO: move to some proper place
-    private RecyclerView devicesRecyclerView;
-    private RecyclerView.Adapter devicesAdapter;
-
-    private RecyclerView.LayoutManager deviceLayoutManager;
-
-    // Index of the selected device in RecyclerView
-    // (no selection by default)
-    public int selected_device_position = RecyclerView.NO_POSITION;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        if (savedInstanceState == null) {
+            FragmentManager fm = getSupportFragmentManager();
+            FragmentTransaction ft = fm.beginTransaction();
+                ft
+                .setReorderingAllowed(true)
+                //.add(R.id.fragment_container_view, ScanningFragment.class, null, "SCAN")
+                .replace(R.id.fragment_container_view, ScanningFragment.class, null, "SCAN")
+                //.addToBackStack("scanning") // name can be null
+                .commit();
+
+/*            ScanningFragment fragmentScan =
+                    (ScanningFragment)fm.findFragmentByTag("SCAN");
+            if (fragmentScan.isAdded()){ ft.show(fragmentScan); }
+            else { ft.hide(fragmentScan); }
+*/
+        }
+
         btManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         btAdapter = btManager.getAdapter();
-        btLeScanner = btAdapter.getBluetoothLeScanner();
 
         if (btAdapter == null) {
             Toast.makeText(MainActivity.this, "Bluetooth interface not available!", Toast.LENGTH_SHORT).show();
@@ -129,23 +132,16 @@ public class MainActivity extends AppCompatActivity {
 
         setMyDevice("18:5E:0F:9C:D5:A0"); //Todo
 
-        createBTDevicesInRecyclerViewAdapter();
-
-        startScanningButton = findViewById(R.id.scan_button);
-        startScanningButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                startScanning();
-            }
-        });
         Intent service_activity_launch_intent =
                 new Intent(this, ServicesActivity.class);
 
         connectButton = findViewById(R.id.connection_button);
         connectButton.setVisibility(INVISIBLE);
+        connectButton.setText("Disconnect");
         connectButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 //startActivity(service_activity_launch_intent);
-                HandleBleConnection(100);
+                HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTING); //todo
             }
         });
 
@@ -207,260 +203,77 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // Device scan callback.
-    ScanCallback leScanCallback =
-        new ScanCallback() {
-            @Override
-            public void onScanResult(int callbackType, ScanResult result) {
-                super.onScanResult(callbackType, result);
-
-                addDevice(result); // add device-details to RecyclerView List adapter
-
-                BluetoothDevice device = result.getDevice(); // TODO: move onto OnCreate??
-                int signal = result.getRssi();
-                System.out.println("BT address: " + device + " | rssi: " + signal);
-            }
-        };
-
-    @SuppressLint("SetTextI18n")
-    public void startScanning() { // TODO: private ????????????????
-        if (scanning == false) {
-            scanning = true;
-            startScanningButton.setText("Stop scan");
-
-            // start scanning by cleaning device-list
-            if (mLeDevices != null){
-                int deviceCnt = mLeDevices.size();
-                mLeDevices.removeAll(mLeDevices);
-                mDevices.removeAll(mDevices);
-                devicesAdapter.notifyItemRangeRemoved(0, deviceCnt);
-                selected_device_position = RecyclerView.NO_POSITION;
-            }
-
-            btLeScanner.startScan(leScanCallback);
-
-            // Stops scanning after a predefined scan period.
-            handler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    scanning = false;
-                    btLeScanner.stopScan(leScanCallback);
-                    //startScanningButton.setVisibility(View.VISIBLE);
-                    startScanningButton.setText("Start scan");
-                }
-            }, SCAN_PERIOD);
-
-        } else { // scanning
-            scanning = false;
-            startScanningButton.setText("Start scan");
-            btLeScanner.stopScan(leScanCallback);
-        }
-    }
 
     private final BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 // successfully connected to the GATT Server
-                System.out.println("Connected to My device!");
-                //Toast.makeText(MainActivity.this, "Connected to My device!", Toast.LENGTH_SHORT).show();
-                //connectButton.setText("Disconnect");
-
+/*
                 // Start Services-activity
                 Intent service_activity_launch_intent =
                         new Intent(MainActivity.this, ServicesActivity.class);
 
                 startActivity(service_activity_launch_intent);
+ */
+                HandleBleConnection(BT_CONNECTION_STATE.CONNECTED);
 
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 // disconnected from the GATT Server
-                System.out.println("Disconnected from My device!");
-                //Toast.makeText(MainActivity.this, "Disconnected from My device!", Toast.LENGTH_SHORT).show();
-                connectButton.setText("Connect");
-                connectButton.setVisibility(View.INVISIBLE);
-
-                startScanningButton.setVisibility(VISIBLE);
+                HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTED);
             }
         }
     };
 
 
-    public void HandleBleConnection(int device_index) { // TODO: private ????????????????
-        if (connectButton.getVisibility() == VISIBLE) {
-            if (connectButton.getText() == "Connect"){
-                if (scanning == true) {
-                    scanning = false;
-                    startScanningButton.setText("Start scan");
-                    startScanningButton.setVisibility(View.INVISIBLE);
-                    btLeScanner.stopScan(leScanCallback);
-                }
-
-                connectButton.setText("Connecting");
-                btGatt = mDevices.get(device_index).getBTDeviceAddress().
-                        connectGatt(MainActivity.this,
-                                false, gattCallback);
-            }
-            else if (connectButton.getText() == "Disconnect"){
-                connectButton.setText("Disconnecting");
-                btGatt.disconnect();
-            }
-
+    @SuppressLint("MissingPermission")
+    // MissingPermission here just to avoid warnings. Runtime permission for BT_CONNECT
+    // has (and must) been checked earlier.
+    public void HandleBleConnection(BT_CONNECTION_STATE stateChange) {
+        if (stateChange == BT_CONNECTION_STATE.NOT_SCANNING){
+            mConnectionState = BT_CONNECTION_STATE.NOT_SCANNING;
         }
-    }
-
-    public class BTDevicesRecyclerViewAdapter extends RecyclerView.Adapter<BTDevicesRecyclerViewAdapter.ViewHolder> {
-
-        private ArrayList<DeviceModel> DeviceModelArrayList;
-        public Context context;
-        final private RVItemDeviceOnClickListener onClickListener;
-
-        public BTDevicesRecyclerViewAdapter(ArrayList<DeviceModel> DeviceList,
-                                            RVItemDeviceOnClickListener onClickListener,
-                                            Context context) {
-            this.DeviceModelArrayList = DeviceList;
-            this.context = context;
-            this.onClickListener = onClickListener;
+        else if (stateChange == BT_CONNECTION_STATE.SCANNING){
+            mConnectionState = BT_CONNECTION_STATE.SCANNING;
         }
+        else if (stateChange == BT_CONNECTION_STATE.CONNECTING){
+            mConnectionState = BT_CONNECTION_STATE.CONNECTING;
+            connectButton.setVisibility(VISIBLE);
 
-        @NonNull
-        @Override
-        public BTDevicesRecyclerViewAdapter.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View view;
-            Context context = parent.getContext();
-            LayoutInflater inflater = LayoutInflater.from(context);
-
-            // Inflate the custom layout
-            view = inflater.inflate(R.layout.recycle_device_item_view, parent, false);
-
-            return new BTDevicesRecyclerViewAdapter.ViewHolder(view);
+            btGatt = getMyBTDevice().connectGatt(MainActivity.this,
+                    false, gattCallback);
         }
+        else if (stateChange == BT_CONNECTION_STATE.CONNECTED){
 
-        public class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener{
-            private final TextView deviceAddress;
-            private final TextView deviceName;
-            //private final TextView deviceSignal;
+            System.out.println("Connected to remote device!");
 
-            public ViewHolder(View view) {
-                super(view);
-
-                // Define click listener for the ViewHolder's View
-                view.setOnClickListener((View.OnClickListener) this);
-                //view.setOnLongClickListener((View.OnLongClickListener) this);
-
-                deviceAddress = (TextView) view.findViewById(R.id.device_mac_address);
-                deviceName = (TextView) view.findViewById(R.id.device_name);
-            }
-
-            @Override
-            public void onClick(View v) {
-                int position = getBindingAdapterPosition();
-
-                if (position >= RecyclerView.NO_POSITION) {
-                    onClickListener.onClick(position);
-                }
-            }
-
-            public TextView getDeviceAddress() {
-                return deviceAddress;
-            }
-            public TextView getDeviceName() {
-                return deviceName;
-            }
+            mConnectionState = BT_CONNECTION_STATE.CONNECTED;
         }
+        else if (stateChange == BT_CONNECTION_STATE.DISCONNECTING){
 
-        @Override
-        public void onBindViewHolder(@NonNull BTDevicesRecyclerViewAdapter.ViewHolder holder, int position) {
-            // Get element from your dataset at this position and replace the
-            // contents of the view with that element
-            if (this.DeviceModelArrayList != null){
-                DeviceModel deviceItem = DeviceModelArrayList.get(position);
-                holder.getDeviceAddress().
-                        setText(deviceItem.getBTDeviceAddress().toString());
-
-                holder.getDeviceName().
-                        setText(deviceItem.getBTDeviceName());
-
-                if (selected_device_position != RecyclerView.NO_POSITION
-                        && (selected_device_position == position)){
-                    holder.itemView.setBackgroundColor(Color.CYAN);
-                }
-                else {
-                    holder.itemView.setBackgroundColor(Color.YELLOW);
-                }
-            }
+            mConnectionState = BT_CONNECTION_STATE.DISCONNECTING;
+            btGatt.disconnect();
         }
+        else if (stateChange == BT_CONNECTION_STATE.CONNECTING_FAILED){
 
-        @Override
-        public int getItemCount() {
-            if (this.DeviceModelArrayList == null){
-                return 0;
+            System.out.println("Failed to connected to the remote device!");
+            mConnectionState = BT_CONNECTION_STATE.DISCONNECTED;
+        }
+        else if (stateChange == BT_CONNECTION_STATE.DISCONNECTED){
+            if (mConnectionState == BT_CONNECTION_STATE.CONNECTING){
+                Toast.makeText(MainActivity.this, "Failed to connect to the remote device!", Toast.LENGTH_SHORT).show();
+                System.out.println("Failed to connect to the remote device!");
             }
-            return this.DeviceModelArrayList.size();
+            else{
+                System.out.println("Disconnected from My device!");
+            }
+
+            connectButton.setVisibility(INVISIBLE);
+
+            mConnectionState = BT_CONNECTION_STATE.DISCONNECTED;
         }
     }
 
 
-    private void createBTDevicesInRecyclerViewAdapter(){
-        // Show BT devices in RecyclerView type of List view:
-        devicesRecyclerView = findViewById(R.id.BT_Devices_RecyclerView);
-        devicesRecyclerView.setHasFixedSize(false);
-
-        deviceLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
-
-        // Applying OnClickListener to RecyclerView adapter
-        RVItemDeviceOnClickListener rVItemDeviceOnClickListener=
-                new RVItemDeviceOnClickListener() {
-            @Override
-            public void onClick(int position) {
-                if (selected_device_position == position) {
-                    // Selected device item is clicked again.
-                    // Start to connect to remote device using
-                    // MAC-address of device-item.
-                    HandleBleConnection(selected_device_position);
-                }
-                else {
-                    // Some other item selected.
-                    // Update old as well as new position.
-                    int previous_selected_device_position = selected_device_position;
-                    selected_device_position = position;
-                    devicesAdapter.notifyItemChanged(previous_selected_device_position);
-                    devicesAdapter.notifyItemChanged(selected_device_position);
-                    System.out.println("prev: " +
-                            previous_selected_device_position + " new: " + selected_device_position);
-                    connectButton.setVisibility(VISIBLE);
-                    connectButton.setText("Connect");
-                }
-            }
-        };
-
-        devicesAdapter = new BTDevicesRecyclerViewAdapter(mDevices,
-                rVItemDeviceOnClickListener,
-                MainActivity.this);
-
-        devicesRecyclerView.setLayoutManager(deviceLayoutManager);
-        devicesRecyclerView.setAdapter(devicesAdapter);
-
-        DividerItemDecoration mDividerItemDecoration = new DividerItemDecoration(devicesRecyclerView.getContext(),
-                LinearLayoutManager.VERTICAL); // TODO: any get-method available???
-        //mDividerItemDecoration.setDrawable();
-        devicesRecyclerView.addItemDecoration(mDividerItemDecoration);
-
-    }
-
-    public void addDevice(ScanResult result) {
-        DeviceModel device =
-                new DeviceModel(result.getDevice(),
-                        "unknown",
-                        result.getRssi());
-
-        if( (mLeDevices == null) ||
-                (!mLeDevices.contains(device.getBTDeviceAddress()))) {
-
-            mLeDevices.add(device.getBTDeviceAddress());
-            mDevices.add(device);
-
-            devicesAdapter.notifyDataSetChanged();
-        }
-    }
 
 }
