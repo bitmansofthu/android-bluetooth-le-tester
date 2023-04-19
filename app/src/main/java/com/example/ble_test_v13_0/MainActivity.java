@@ -1,28 +1,28 @@
 package com.example.ble_test_v13_0;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothProfile;
+import android.content.DialogInterface;
 import android.content.Intent;
 
 import android.content.Context;
-import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Button;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 
-import android.widget.TextView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import static android.Manifest.permission.BLUETOOTH_SCAN;
@@ -30,8 +30,6 @@ import static android.Manifest.permission.BLUETOOTH_CONNECT;
 import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
 
-
-import java.util.ArrayList;
 
 enum BT_CONNECTION_STATE {
     NOT_SCANNING,
@@ -52,6 +50,11 @@ public class MainActivity extends AppCompatActivity {
 
     final int REQUEST_ENABLE_BT = 1;
     Button connectButton;
+
+    ProgressBar connectionProgressBar;
+    AlertDialog.Builder builderConnecting;
+    AlertDialog dialogConnecting;
+
     // Define Permission codes for Scan and Connect.
     // Give any value but unique for each permission...
     private static final int BT_SCAN_PERMISSION_CODE = 100;
@@ -138,12 +141,24 @@ public class MainActivity extends AppCompatActivity {
         connectButton = findViewById(R.id.connection_button);
         connectButton.setVisibility(INVISIBLE);
         connectButton.setText("Disconnect");
-        connectButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                //startActivity(service_activity_launch_intent);
-                HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTING); //todo
-            }
+        connectButton.setOnClickListener(v -> {
+            //startActivity(service_activity_launch_intent);
+            HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTING);
         });
+
+        connectionProgressBar = (ProgressBar) findViewById(R.id.simpleProgressBar);
+        connectionProgressBar.setVisibility(INVISIBLE);
+
+        // Settings for Connecting-dialog
+        builderConnecting = new AlertDialog.Builder(this);
+        builderConnecting.setTitle("Connecting... This may take a moment.");
+        builderConnecting.setCancelable(true); // if you want user to wait for some process to finish,
+        builderConnecting.setView(R.layout.connection_progress);
+        // Setting Negative "NO" Btn
+        builderConnecting.setNegativeButton("Cancel connecting",
+                (dialog, which) -> dialog.cancel());
+
+        dialogConnecting = builderConnecting.create();
 
     }
 
@@ -176,8 +191,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
-                                           String[] permissions,
-                                           int[] grantResults)
+                                           @NonNull String[] permissions,
+                                           @NonNull int[] grantResults)
     {
         super.onRequestPermissionsResult(requestCode,
                 permissions,
@@ -244,6 +259,12 @@ public class MainActivity extends AppCompatActivity {
             if (mConnectionState == BT_CONNECTION_STATE.NOT_SCANNING){
                 mConnectionState = BT_CONNECTION_STATE.CONNECTING;
                 connectButton.setVisibility(VISIBLE);
+                //connectionProgressBar.setVisibility(VISIBLE);
+                // Show Connecting-dialog. Better to execute  in separate thread
+                // although this should work in original UI-thread.
+                runOnUiThread(() -> {
+                    dialogConnecting.show();
+                });
 
                 btGatt = getMyBTDevice().connectGatt(MainActivity.this,
                         false, gattCallback);
@@ -254,6 +275,16 @@ public class MainActivity extends AppCompatActivity {
             System.out.println("Connected to remote device!");
 
             mConnectionState = BT_CONNECTION_STATE.CONNECTED;
+
+            //Hide Connecting-dialog in separate thread. Otherwise next error:
+            //    W/BluetoothGatt: Unhandled exception in callback
+            //    android.view.ViewRootImpl$CalledFromWrongThreadException:
+            //    Only the original thread that created a view hierarchy can touch
+            //    its views.
+            runOnUiThread(() -> {
+                connectionProgressBar.setVisibility(INVISIBLE);
+                dialogConnecting.hide();
+            });
         }
         else if (stateChange == BT_CONNECTION_STATE.DISCONNECTING){
             if (mConnectionState == BT_CONNECTION_STATE.CONNECTING){
@@ -275,8 +306,20 @@ public class MainActivity extends AppCompatActivity {
         }
         else if (stateChange == BT_CONNECTION_STATE.DISCONNECTED){
             if (mConnectionState == BT_CONNECTION_STATE.CONNECTING){
-                //Toast.makeText(MainActivity.this, "Failed to connect to the remote device!", Toast.LENGTH_SHORT).show();
                 System.out.println("Failed to connect to the remote device!");
+                connectionProgressBar.setVisibility(INVISIBLE);
+
+                //Hide Connecting-dialog in separate thread. Otherwise next error:
+                //    W/BluetoothGatt: Unhandled exception in callback
+                //    android.view.ViewRootImpl$CalledFromWrongThreadException:
+                //    Only the original thread that created a view hierarchy can touch
+                //    its views.
+                runOnUiThread(() -> {
+                    connectionProgressBar.setVisibility(INVISIBLE);
+                    dialogConnecting.hide();
+                    Toast.makeText(MainActivity.this, "Failed to connect to the remote device!", Toast.LENGTH_SHORT).show();
+                });
+
             }
             else{
                 System.out.println("Disconnected from My device!");
@@ -288,7 +331,5 @@ public class MainActivity extends AppCompatActivity {
         }
         System.out.println("State: " + mConnectionState);
     }
-
-
 
 }
