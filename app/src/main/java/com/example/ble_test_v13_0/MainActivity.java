@@ -231,17 +231,23 @@ public class MainActivity extends AppCompatActivity {
     // has (and must) been checked earlier.
     public void HandleBleConnection(BT_CONNECTION_STATE stateChange) {
         if (stateChange == BT_CONNECTION_STATE.NOT_SCANNING){
-            mConnectionState = BT_CONNECTION_STATE.NOT_SCANNING;
+            if (mConnectionState == BT_CONNECTION_STATE.SCANNING){
+                mConnectionState = BT_CONNECTION_STATE.NOT_SCANNING;
+            }
         }
         else if (stateChange == BT_CONNECTION_STATE.SCANNING){
-            mConnectionState = BT_CONNECTION_STATE.SCANNING;
+            if (mConnectionState == BT_CONNECTION_STATE.NOT_SCANNING){
+                mConnectionState = BT_CONNECTION_STATE.SCANNING;
+            }
         }
         else if (stateChange == BT_CONNECTION_STATE.CONNECTING){
-            mConnectionState = BT_CONNECTION_STATE.CONNECTING;
-            connectButton.setVisibility(VISIBLE);
+            if (mConnectionState == BT_CONNECTION_STATE.NOT_SCANNING){
+                mConnectionState = BT_CONNECTION_STATE.CONNECTING;
+                connectButton.setVisibility(VISIBLE);
 
-            btGatt = getMyBTDevice().connectGatt(MainActivity.this,
-                    false, gattCallback);
+                btGatt = getMyBTDevice().connectGatt(MainActivity.this,
+                        false, gattCallback);
+            }
         }
         else if (stateChange == BT_CONNECTION_STATE.CONNECTED){
 
@@ -250,9 +256,17 @@ public class MainActivity extends AppCompatActivity {
             mConnectionState = BT_CONNECTION_STATE.CONNECTED;
         }
         else if (stateChange == BT_CONNECTION_STATE.DISCONNECTING){
-
-            mConnectionState = BT_CONNECTION_STATE.DISCONNECTING;
-            btGatt.disconnect();
+            if (mConnectionState == BT_CONNECTION_STATE.CONNECTING){
+                // disconnect before the connection is established
+                mConnectionState = BT_CONNECTION_STATE.NOT_SCANNING;
+                connectButton.setVisibility(INVISIBLE);
+                btGatt.close();
+            }
+            else {
+                // disconnect after the connection is established
+                mConnectionState = BT_CONNECTION_STATE.DISCONNECTING;
+                btGatt.disconnect();
+            }
         }
         else if (stateChange == BT_CONNECTION_STATE.CONNECTING_FAILED){
 
@@ -261,7 +275,7 @@ public class MainActivity extends AppCompatActivity {
         }
         else if (stateChange == BT_CONNECTION_STATE.DISCONNECTED){
             if (mConnectionState == BT_CONNECTION_STATE.CONNECTING){
-                Toast.makeText(MainActivity.this, "Failed to connect to the remote device!", Toast.LENGTH_SHORT).show();
+                //Toast.makeText(MainActivity.this, "Failed to connect to the remote device!", Toast.LENGTH_SHORT).show();
                 System.out.println("Failed to connect to the remote device!");
             }
             else{
@@ -270,8 +284,9 @@ public class MainActivity extends AppCompatActivity {
 
             connectButton.setVisibility(INVISIBLE);
 
-            mConnectionState = BT_CONNECTION_STATE.DISCONNECTED;
+            mConnectionState = BT_CONNECTION_STATE.NOT_SCANNING;
         }
+        System.out.println("State: " + mConnectionState);
     }
 
 

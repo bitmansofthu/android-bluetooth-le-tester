@@ -12,16 +12,16 @@
         android:textColor="@android:color/black"
         android:textSize="16sp"
         android:text="name"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp" />
+        android:paddingTop="1dp"
+        android:paddingBottom="1dp" />
 
     <TextView
         android:id="@+id/service_group_id"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:paddingLeft="?android:attr/expandableListPreferredItemPaddingLeft"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp"
+        android:paddingTop="1dp"
+        android:paddingBottom="1dp"
         android:text="uuid"
         android:textColor="@android:color/black"
         android:textSize="16sp" />

@@ -52,8 +52,7 @@ public class ScanningFragment extends Fragment {
     BluetoothLeScanner btLeScanner;
     Button startScanningButton;
 
-    boolean scanning = false;
-    // Stops scanning after 10 seconds.
+    // Stop scanning after 10 seconds.
     static final long SCAN_PERIOD = 100000;
 
     Handler handler = new Handler(Looper.myLooper());
@@ -128,7 +127,7 @@ public class ScanningFragment extends Fragment {
         startScanningButton = (Button) fragment_view.findViewById(R.id.scan_button);
         startScanningButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                startScanning();
+                toggleScanning();
             }
         });
 
@@ -138,6 +137,7 @@ public class ScanningFragment extends Fragment {
     // Device scan callback.
     ScanCallback leScanCallback =
             new ScanCallback() {
+                @SuppressLint("MissingPermission")
                 @Override
                 public void onScanResult(int callbackType, ScanResult result) {
                     super.onScanResult(callbackType, result);
@@ -146,7 +146,9 @@ public class ScanningFragment extends Fragment {
 
                     BluetoothDevice device = result.getDevice(); // TODO: move onto OnCreate??
                     int signal = result.getRssi();
-                    System.out.println("BT address: " + device + " | rssi: " + signal);
+                    System.out.println("BT address: " + device + " | name: " +
+                            device.getName() +
+                            " | rssi: " + signal);
                 }
             };
 
@@ -154,9 +156,14 @@ public class ScanningFragment extends Fragment {
     @SuppressLint("MissingPermission")
     // MissingPermission here just to avoid warnings. Runtime permission for BT_SCAN
     // has (and must) been checked earlier.
-    public void startScanning() {
-        if (scanning == false) {
-            scanning = true;
+    public void toggleScanning() {
+        // trigger connection establishment for selected BT-device
+        if (((MainActivity)getActivity()).mConnectionState ==
+                BT_CONNECTION_STATE.NOT_SCANNING) {
+
+            ((MainActivity)getActivity()).
+                    HandleBleConnection(BT_CONNECTION_STATE.SCANNING);
+
             startScanningButton.setText("Stop scan");
 
             // start scanning by cleaning device-list
@@ -174,24 +181,44 @@ public class ScanningFragment extends Fragment {
             handler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    scanning = false;
-                    btLeScanner.stopScan(leScanCallback);
-                    //startScanningButton.setVisibility(View.VISIBLE);
-                    startScanningButton.setText("Start scan");
+                    if (((MainActivity)getActivity()).mConnectionState ==
+                            BT_CONNECTION_STATE.SCANNING) {
+
+                        ((MainActivity)getActivity()).
+                                HandleBleConnection(BT_CONNECTION_STATE.NOT_SCANNING);
+
+                        btLeScanner.stopScan(leScanCallback);
+                        startScanningButton.setText("Start scan");
+                    }
                 }
             }, SCAN_PERIOD);
 
-        } else { // scanning
-            scanning = false;
+        } else if (((MainActivity)getActivity()).mConnectionState ==
+                BT_CONNECTION_STATE.SCANNING) {
+
+            ((MainActivity)getActivity()).
+                    HandleBleConnection(BT_CONNECTION_STATE.NOT_SCANNING);
+
             startScanningButton.setText("Start scan");
             btLeScanner.stopScan(leScanCallback);
         }
     }
 
+    // Avoid warning for 'result.getDevice().getName()' for missing
+    // BLUETOOTH_CONNECT permission.
+    // Runtime permission is actually checked&granted earlier...
+    @SuppressLint("MissingPermission")
     public void addDevice(ScanResult result) {
+        String deviceName;
+        if (result.getDevice().getName() == null){
+            deviceName = "Unknown";
+        }
+        else{
+            deviceName = result.getDevice().getName();
+        }
         DeviceModel device =
                 new DeviceModel(result.getDevice(),
-                        "unknown",
+                        deviceName,
                         result.getRssi());
 
         if( (mLeDevices == null) ||
@@ -281,7 +308,8 @@ public class ScanningFragment extends Fragment {
                     holder.itemView.setBackgroundColor(Color.CYAN);
                 }
                 else {
-                    holder.itemView.setBackgroundColor(Color.YELLOW);
+                    // light blue
+                    holder.itemView.setBackgroundColor(0xFFD0FDF3);
                 }
             }
         }
@@ -330,6 +358,7 @@ public class ScanningFragment extends Fragment {
                             selected_device_position = position;
                             devicesAdapter.notifyItemChanged(previous_selected_device_position);
                             devicesAdapter.notifyItemChanged(selected_device_position);
+//todo
                             System.out.println("prev: " +
                                     previous_selected_device_position + " new: " + selected_device_position);
                         }
