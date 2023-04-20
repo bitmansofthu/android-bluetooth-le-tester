@@ -1,12 +1,15 @@
 package com.example.ble_test_v13_0;
 
-import androidx.appcompat.app.AppCompatActivity;
-
+import android.content.Context;
 import android.database.DataSetObserver;
-import android.bluetooth.BluetoothGattCharacteristic;
-
 import android.os.Bundle;
+
+import androidx.annotation.NonNull;
+import androidx.fragment.app.Fragment;
+
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ExpandableListAdapter;
 import android.widget.ExpandableListView;
@@ -14,7 +17,26 @@ import android.widget.Toast;
 
 import java.util.ArrayList;
 
-public class ServicesActivity extends AppCompatActivity {
+/**
+ * A simple {@link Fragment} subclass.
+ * Use the {@link ConnectedFragment#newInstance} factory method to
+ * create an instance of this fragment.
+ */
+public class ConnectedFragment extends Fragment {
+
+    // TODO: Rename parameter arguments, choose names that match
+    // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
+    private static final String ARG_PARAM1 = "param1";
+    private static final String ARG_PARAM2 = "param2";
+
+    public View fragment_view; //todo
+
+    Context this_context;
+
+    // TODO: Rename and change types of parameters
+    private String mParam1;
+    private String mParam2;
+
     Button disconnectButton;
 
     private ExpandableListView servicesExpandableListView;
@@ -23,17 +45,72 @@ public class ServicesActivity extends AppCompatActivity {
     ArrayList<ServiceModel> serviceModelArrayList = new ArrayList<>();
     ArrayList<ArrayList<CharacteristicsModel>> characteristicsModelArrayList =
             new ArrayList<ArrayList<CharacteristicsModel>>();
-    //ArrayList<Boolean> characteristicsItemEnabledList = new ArrayList<>(); //Todo
+
+    public ConnectedFragment() {
+        // Required empty public constructor
+        super(R.layout.fragment_connected);
+    }
+
+    /**
+     * Use this factory method to create a new instance of
+     * this fragment using the provided parameters.
+     *
+     * @param param1 Parameter 1.
+     * @param param2 Parameter 2.
+     * @return A new instance of fragment ConnectedFragment.
+     */
+    // TODO: Rename and change types and number of parameters
+    public static ConnectedFragment newInstance(String param1, String param2) {
+        ConnectedFragment fragment = new ConnectedFragment();
+        Bundle args = new Bundle();
+        args.putString(ARG_PARAM1, param1);
+        args.putString(ARG_PARAM2, param2);
+        fragment.setArguments(args);
+        return fragment;
+    }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_services);
+        if (getArguments() != null) {
+            mParam1 = getArguments().getString(ARG_PARAM1);
+            mParam2 = getArguments().getString(ARG_PARAM2);
+        }
+    }
 
-        disconnectButton = findViewById(R.id.disconnect_button);
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        // Inflate the layout for this fragment
+        fragment_view = inflater.inflate(R.layout.fragment_connected, container, false);
+
+        this_context = container.getContext();
+
+        return fragment_view;
+
+    }
+
+    // This event is triggered soon after onCreateView().
+    // onViewCreated() is only called if the view returned from onCreateView() is non-null.
+    // Any view setup should occur here.  E.g., view lookups and attaching view listeners.
+    @Override
+    public void onViewCreated(@NonNull View view, Bundle savedInstanceState){
+        disconnectButton = (Button) fragment_view.findViewById(R.id.disconnect_button);
         disconnectButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                finish();
+                if (((MainActivity) getActivity()).mConnectionState ==
+                        BT_CONNECTION_STATE.CONNECTED) {
+
+                    ((MainActivity) getActivity()).
+                            HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTING);
+                }
+                //else
+                // What about, if the state != CONNECTED ?
+                // Fragment should be closed somehow.
+                //I did some test where I powered off the remote BLE-device.
+                // -> onConnectionStateChange-event with newState STATE_DISCONNECTED
+                // -> causes ConnectedFragment to be closed from FragmentTransaction MainActivity.
+                // OK!
             }
         });
 
@@ -166,10 +243,10 @@ public class ServicesActivity extends AppCompatActivity {
     }
 
     public void showGattProfilesInExpandableListView(){
-        servicesExpandableListView = (ExpandableListView)findViewById(R.id.Services_expandableListView);
+        servicesExpandableListView = (ExpandableListView)fragment_view.findViewById(R.id.Services_expandableListView);
 
         // Show services in Expandable type of List view (characteristics expanded)
-        expandableServicesAdapter = new ServicesExpandableListAdapter(ServicesActivity.this,
+        expandableServicesAdapter = new ServicesExpandableListAdapter(this_context,
                 serviceModelArrayList, characteristicsModelArrayList);
         servicesExpandableListView.setAdapter(expandableServicesAdapter);
 
@@ -183,7 +260,7 @@ public class ServicesActivity extends AppCompatActivity {
         servicesExpandableListView.setOnGroupExpandListener(new ExpandableListView.OnGroupExpandListener() {
             @Override
             public void onGroupExpand(int groupPosition) {
-                Toast.makeText(getApplicationContext(),
+                Toast.makeText(this_context,
                         serviceModelArrayList.get(groupPosition) + " List Expanded.",
                         Toast.LENGTH_SHORT).show();
             }

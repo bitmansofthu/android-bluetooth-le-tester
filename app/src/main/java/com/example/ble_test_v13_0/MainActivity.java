@@ -11,32 +11,23 @@ import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothProfile;
-import android.content.DialogInterface;
-import android.content.Intent;
 
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.widget.Button;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
-
-import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import static android.Manifest.permission.BLUETOOTH_SCAN;
 import static android.Manifest.permission.BLUETOOTH_CONNECT;
-import static android.view.View.INVISIBLE;
-import static android.view.View.VISIBLE;
-
 
 enum BT_CONNECTION_STATE {
     NOT_SCANNING,
     SCANNING,
     CONNECTING,
     CONNECTED,
-    CONNECTING_FAILED,
     DISCONNECTING,
     DISCONNECTED
 }
@@ -49,9 +40,7 @@ public class MainActivity extends AppCompatActivity {
     BluetoothGatt btGatt;
 
     final int REQUEST_ENABLE_BT = 1;
-    Button connectButton;
 
-    ProgressBar connectionProgressBar;
     AlertDialog.Builder builderConnecting;
     AlertDialog dialogConnecting;
 
@@ -65,12 +54,8 @@ public class MainActivity extends AppCompatActivity {
     String mMyDevice;
     BluetoothDevice mMyBTDevice;
 
-    public void setMyDevice(String mMyDevice) {
-        this.mMyDevice = mMyDevice;
-    }
-    public String getMyDevice() {
-        return mMyDevice;
-    }
+    FragmentManager fm;
+    FragmentTransaction ft;
 
     public void setMyBTDevice(BluetoothDevice mMyDevice) {
         this.mMyBTDevice = mMyDevice;
@@ -86,27 +71,20 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         if (savedInstanceState == null) {
-            FragmentManager fm = getSupportFragmentManager();
-            FragmentTransaction ft = fm.beginTransaction();
-                ft
+            fm = getSupportFragmentManager();
+            ft = fm.beginTransaction();
+            ft
                 .setReorderingAllowed(true)
-                //.add(R.id.fragment_container_view, ScanningFragment.class, null, "SCAN")
                 .replace(R.id.fragment_container_view, ScanningFragment.class, null, "SCAN")
-                //.addToBackStack("scanning") // name can be null
                 .commit();
-
-/*            ScanningFragment fragmentScan =
-                    (ScanningFragment)fm.findFragmentByTag("SCAN");
-            if (fragmentScan.isAdded()){ ft.show(fragmentScan); }
-            else { ft.hide(fragmentScan); }
-*/
         }
 
         btManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         btAdapter = btManager.getAdapter();
 
         if (btAdapter == null) {
-            Toast.makeText(MainActivity.this, "Bluetooth interface not available!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(MainActivity.this, "Bluetooth interface not available!",
+                    Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -133,33 +111,13 @@ public class MainActivity extends AppCompatActivity {
         checkAndRequestPermission(BLUETOOTH_SCAN, BT_SCAN_PERMISSION_CODE);
         checkAndRequestPermission(BLUETOOTH_CONNECT, BT_CONNECT_PERMISSION_CODE);
 
-        setMyDevice("18:5E:0F:9C:D5:A0"); //Todo
-
-        Intent service_activity_launch_intent =
-                new Intent(this, ServicesActivity.class);
-
-        connectButton = findViewById(R.id.connection_button);
-        connectButton.setVisibility(INVISIBLE);
-        connectButton.setText("Disconnect");
-        connectButton.setOnClickListener(v -> {
-            //startActivity(service_activity_launch_intent);
-            HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTING);
-        });
-
-        connectionProgressBar = (ProgressBar) findViewById(R.id.simpleProgressBar);
-        connectionProgressBar.setVisibility(INVISIBLE);
-
         // Settings for Connecting-dialog
         builderConnecting = new AlertDialog.Builder(this);
         builderConnecting.setTitle("Connecting... This may take a moment.");
         builderConnecting.setCancelable(true); // if you want user to wait for some process to finish,
         builderConnecting.setView(R.layout.connection_progress);
-        // Setting Negative "NO" Btn
-        builderConnecting.setNegativeButton("Cancel connecting",
-                (dialog, which) -> dialog.cancel());
-
+//todo: canceling??
         dialogConnecting = builderConnecting.create();
-
     }
 
     // Function to check and request permission.
@@ -188,7 +146,6 @@ public class MainActivity extends AppCompatActivity {
     // This function is called when the user accepts or decline the permission.
     // Request Code is used to check which permission called this function.
     // This request code is provided when the user is prompt for permission.
-
     @Override
     public void onRequestPermissionsResult(int requestCode,
                                            @NonNull String[] permissions,
@@ -224,18 +181,14 @@ public class MainActivity extends AppCompatActivity {
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 // successfully connected to the GATT Server
-/*
-                // Start Services-activity
-                Intent service_activity_launch_intent =
-                        new Intent(MainActivity.this, ServicesActivity.class);
-
-                startActivity(service_activity_launch_intent);
- */
                 HandleBleConnection(BT_CONNECTION_STATE.CONNECTED);
 
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 // disconnected from the GATT Server
                 HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTED);
+            }
+            else{
+                System.out.println("BluetoothGattCallback: new state " + newState+ ". What to do with this event?");
             }
         }
     };
@@ -258,39 +211,54 @@ public class MainActivity extends AppCompatActivity {
         else if (stateChange == BT_CONNECTION_STATE.CONNECTING){
             if (mConnectionState == BT_CONNECTION_STATE.NOT_SCANNING){
                 mConnectionState = BT_CONNECTION_STATE.CONNECTING;
-                connectButton.setVisibility(VISIBLE);
-                //connectionProgressBar.setVisibility(VISIBLE);
-                // Show Connecting-dialog. Better to execute  in separate thread
-                // although this should work in original UI-thread.
+
+                // Show Connecting-dialog (with progress-spinner).
+                // Better to execute with the help of runOnUiThread
+                // which should execute this in any case immediately,
+                // because we probably are here in UI-thread
+                // (trigger came also from UI from ScanningFragment).
                 runOnUiThread(() -> {
                     dialogConnecting.show();
                 });
 
+                // Start connecting to the remote device.
                 btGatt = getMyBTDevice().connectGatt(MainActivity.this,
                         false, gattCallback);
             }
         }
         else if (stateChange == BT_CONNECTION_STATE.CONNECTED){
 
-            System.out.println("Connected to remote device!");
-
             mConnectionState = BT_CONNECTION_STATE.CONNECTED;
-
-            //Hide Connecting-dialog in separate thread. Otherwise next error:
+            // CONNECTED-event comes from BT-interface (via Callback),
+            // so we are probably now on non-UI thread.
+            // Hide Connecting-dialog with runOnUiThread.
+            //  -Runs the specified action on the UI thread:
+            //    If the current thread is the UI thread,
+            //    then the action is executed immediately.
+            //    Otherwise the action is posted to the event queue of the UI thread.
+            // Otherwise next error:
             //    W/BluetoothGatt: Unhandled exception in callback
             //    android.view.ViewRootImpl$CalledFromWrongThreadException:
             //    Only the original thread that created a view hierarchy can touch
             //    its views.
             runOnUiThread(() -> {
-                connectionProgressBar.setVisibility(INVISIBLE);
+
                 dialogConnecting.hide();
+
+                // show Connection-fragment instead of Scanning-fragment
+                fm = getSupportFragmentManager();
+                ft = fm.beginTransaction();
+                ft
+                    .setReorderingAllowed(true)
+                    .replace(R.id.fragment_container_view, ConnectedFragment.class, null, "CONNECTION")
+                    .commit();
             });
+
         }
         else if (stateChange == BT_CONNECTION_STATE.DISCONNECTING){
             if (mConnectionState == BT_CONNECTION_STATE.CONNECTING){
                 // disconnect before the connection is established
                 mConnectionState = BT_CONNECTION_STATE.NOT_SCANNING;
-                connectButton.setVisibility(INVISIBLE);
                 btGatt.close();
             }
             else {
@@ -299,15 +267,8 @@ public class MainActivity extends AppCompatActivity {
                 btGatt.disconnect();
             }
         }
-        else if (stateChange == BT_CONNECTION_STATE.CONNECTING_FAILED){
-
-            System.out.println("Failed to connected to the remote device!");
-            mConnectionState = BT_CONNECTION_STATE.DISCONNECTED;
-        }
         else if (stateChange == BT_CONNECTION_STATE.DISCONNECTED){
             if (mConnectionState == BT_CONNECTION_STATE.CONNECTING){
-                System.out.println("Failed to connect to the remote device!");
-                connectionProgressBar.setVisibility(INVISIBLE);
 
                 //Hide Connecting-dialog in separate thread. Otherwise next error:
                 //    W/BluetoothGatt: Unhandled exception in callback
@@ -315,21 +276,35 @@ public class MainActivity extends AppCompatActivity {
                 //    Only the original thread that created a view hierarchy can touch
                 //    its views.
                 runOnUiThread(() -> {
-                    connectionProgressBar.setVisibility(INVISIBLE);
                     dialogConnecting.hide();
                     Toast.makeText(MainActivity.this, "Failed to connect to the remote device!", Toast.LENGTH_SHORT).show();
                 });
-
             }
             else{
-                System.out.println("Disconnected from My device!");
-            }
+                // show Scanning-fragment instead of Connection-fragment
 
-            connectButton.setVisibility(INVISIBLE);
+                // Disconnection should go via states:
+                //  CONNECTED -> DISCONNECTING-event -> DISCONNECTING (when using DISCONNECT-button).
+                // If: CONNECTED -> DISCONNECTED-event (from BT-callback),
+                // we lost connection from remote-device.
+
+                runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this, "Disconnected from your BLE device",
+                              Toast.LENGTH_SHORT).show();
+
+                    fm = getSupportFragmentManager();
+                    ft = fm.beginTransaction();
+                    ft
+                            .setReorderingAllowed(true)
+                            .replace(R.id.fragment_container_view, ScanningFragment.class, null, "SCAN")
+                            .commit();
+                });
+            }
 
             mConnectionState = BT_CONNECTION_STATE.NOT_SCANNING;
         }
-        System.out.println("State: " + mConnectionState);
+
+        System.out.println("State: " + mConnectionState); //todo: remove
     }
 
 }
