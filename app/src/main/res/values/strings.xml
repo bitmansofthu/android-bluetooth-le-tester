@@ -3,4 +3,9 @@
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="disconnect">Disconnect</string>
+    <string name="StopScan">Stop scan</string>
+    <string name="StartScan">Start scan</string>
+    <string name="Scanning">Scanning</string>
+    <string name="mac_address">MAC address</string>
+    <string name="DeviceName">Device name</string>
 </resources>

@@ -1,5 +1,6 @@
 package com.example.ble_test_v13_0;
 
+import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
 
 import android.annotation.SuppressLint;
@@ -24,6 +25,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -52,8 +54,11 @@ public class ScanningFragment extends Fragment {
     BluetoothLeScanner btLeScanner;
     Button startScanningButton;
 
-    // Stop scanning after 10 seconds.
-    static final long SCAN_PERIOD = 100000;
+    ProgressBar scanningProgressBar;
+
+    // Stop scanning automatically after 60 seconds
+    // (if not stopped manually earlier).
+    static final long SCAN_PERIOD = 60000; // ms
 
     Handler handler = new Handler(Looper.myLooper());
 
@@ -125,11 +130,10 @@ public class ScanningFragment extends Fragment {
         btLeScanner = ((MainActivity)getActivity()).btAdapter.getBluetoothLeScanner();
 
         startScanningButton = (Button) fragment_view.findViewById(R.id.scan_button);
-        startScanningButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                toggleScanning();
-            }
-        });
+        startScanningButton.setOnClickListener(v -> toggleScanning());
+
+        scanningProgressBar = (ProgressBar) fragment_view.findViewById(R.id.scanProgressBar);
+        scanningProgressBar.setVisibility(INVISIBLE);
 
         createBTDevicesInRecyclerViewAdapter();
     }
@@ -144,15 +148,14 @@ public class ScanningFragment extends Fragment {
 
                     addDevice(result); // add device-details to RecyclerView List adapter
 
-                    BluetoothDevice device = result.getDevice(); // TODO: move onto OnCreate??
+                    BluetoothDevice device = result.getDevice();
                     int signal = result.getRssi();
                     System.out.println("BT address: " + device + " | name: " +
                             device.getName() +
-                            " | rssi: " + signal);
+                            " | rssi: " + signal); //todo
                 }
             };
 
-    //@SuppressLint("SetTextI18n")
     @SuppressLint("MissingPermission")
     // MissingPermission here just to avoid warnings. Runtime permission for BT_SCAN
     // has (and must) been checked earlier.
@@ -164,7 +167,8 @@ public class ScanningFragment extends Fragment {
             ((MainActivity)getActivity()).
                     HandleBleConnection(BT_CONNECTION_STATE.SCANNING);
 
-            startScanningButton.setText("Stop scan");
+            startScanningButton.setText(R.string.StopScan);
+            scanningProgressBar.setVisibility(VISIBLE);
 
             // start scanning by cleaning device-list
             if (mLeDevices != null){
@@ -177,19 +181,21 @@ public class ScanningFragment extends Fragment {
 
             btLeScanner.startScan(leScanCallback);
 
-            // Stops scanning after a predefined scan period.
-            handler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    if (((MainActivity)getActivity()).mConnectionState ==
-                            BT_CONNECTION_STATE.SCANNING) {
+            // remove all messages (some delayed posts might still
+            // be in the message queue)
+            handler.removeCallbacksAndMessages(null);
 
-                        ((MainActivity)getActivity()).
-                                HandleBleConnection(BT_CONNECTION_STATE.NOT_SCANNING);
+            // Stops scanning after a predefined scan period by creating new delayed post.
+            handler.postDelayed(() -> {
+                if (((MainActivity)getActivity()).mConnectionState ==
+                        BT_CONNECTION_STATE.SCANNING) {
 
-                        btLeScanner.stopScan(leScanCallback);
-                        startScanningButton.setText("Start scan");
-                    }
+                    ((MainActivity)getActivity()).
+                            HandleBleConnection(BT_CONNECTION_STATE.NOT_SCANNING);
+
+                    btLeScanner.stopScan(leScanCallback);
+                    startScanningButton.setText(R.string.StartScan);
+                    scanningProgressBar.setVisibility(INVISIBLE);
                 }
             }, SCAN_PERIOD);
 
@@ -199,8 +205,14 @@ public class ScanningFragment extends Fragment {
             ((MainActivity)getActivity()).
                     HandleBleConnection(BT_CONNECTION_STATE.NOT_SCANNING);
 
-            startScanningButton.setText("Start scan");
+            startScanningButton.setText(R.string.StartScan);
+            scanningProgressBar.setVisibility(INVISIBLE);
+
             btLeScanner.stopScan(leScanCallback);
+
+            // remove all messages (some delayed posts might still
+            // be in the message queue)
+            handler.removeCallbacksAndMessages(null);
         }
     }
 
@@ -226,8 +238,7 @@ public class ScanningFragment extends Fragment {
 
             mLeDevices.add(device.getBTDeviceAddress());
             mDevices.add(device);
-
-            devicesAdapter.notifyDataSetChanged();
+            devicesAdapter.notifyItemInserted(mDevices.size() - 1 );
         }
     }
 
