@@ -16,6 +16,7 @@ import android.widget.ExpandableListView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -98,10 +99,10 @@ public class ConnectedFragment extends Fragment {
         disconnectButton = (Button) fragment_view.findViewById(R.id.disconnect_button);
         disconnectButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                if (((MainActivity) getActivity()).mConnectionState ==
+                if (((MainActivity) requireActivity()).mConnectionState ==
                         BT_CONNECTION_STATE.CONNECTED) {
 
-                    ((MainActivity) getActivity()).
+                    ((MainActivity) requireActivity()).
                             HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTING);
                 }
                 //else

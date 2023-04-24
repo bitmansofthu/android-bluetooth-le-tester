@@ -14,7 +14,6 @@ import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentContainerView;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -29,6 +28,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -62,14 +62,7 @@ public class ScanningFragment extends Fragment {
 
     Handler handler = new Handler(Looper.myLooper());
 
-    private RecyclerView devicesRecyclerView;
     private RecyclerView.Adapter devicesAdapter;
-
-    private RecyclerView.LayoutManager deviceLayoutManager;
-
-    // Index of the selected device in RecyclerView
-    // (no selection by default)
-    public int selected_device_position = RecyclerView.NO_POSITION;
 
     ArrayList<BluetoothDevice> mLeDevices = new ArrayList<BluetoothDevice>(); //TODO: del !!
     ArrayList<DeviceModel> mDevices = new ArrayList<DeviceModel>();
@@ -127,15 +120,41 @@ public class ScanningFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState){
 
-        btLeScanner = ((MainActivity)getActivity()).btAdapter.getBluetoothLeScanner();
+        btLeScanner = ((MainActivity) requireActivity()).btAdapter.getBluetoothLeScanner();
 
-        startScanningButton = (Button) fragment_view.findViewById(R.id.scan_button);
+        startScanningButton = fragment_view.findViewById(R.id.scan_button);
         startScanningButton.setOnClickListener(v -> toggleScanning());
 
-        scanningProgressBar = (ProgressBar) fragment_view.findViewById(R.id.scanProgressBar);
+        scanningProgressBar = fragment_view.findViewById(R.id.scanProgressBar);
         scanningProgressBar.setVisibility(INVISIBLE);
 
         createBTDevicesInRecyclerViewAdapter();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        System.out.println("onStop scan fragment");
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        System.out.println("onDestroy scan fragment");
+    }
+
+    // This method is called when the fragment is no longer connected to the Activity
+    // Any references saved in onAttach should be nulled out here to prevent memory leaks.
+    @Override
+    public void onDetach() {
+        super.onDetach();
+        System.out.println("onDetach scan fragment");
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        System.out.println("onPause scan fragment");
     }
 
     // Device scan callback.
@@ -161,10 +180,10 @@ public class ScanningFragment extends Fragment {
     // has (and must) been checked earlier.
     public void toggleScanning() {
         // trigger connection establishment for selected BT-device
-        if (((MainActivity)getActivity()).mConnectionState ==
+        if (((MainActivity) requireActivity()).mConnectionState ==
                 BT_CONNECTION_STATE.NOT_SCANNING) {
 
-            ((MainActivity)getActivity()).
+            ((MainActivity) requireActivity()).
                     HandleBleConnection(BT_CONNECTION_STATE.SCANNING);
 
             startScanningButton.setText(R.string.StopScan);
@@ -173,10 +192,10 @@ public class ScanningFragment extends Fragment {
             // start scanning by cleaning device-list
             if (mLeDevices != null){
                 int deviceCnt = mLeDevices.size();
-                mLeDevices.removeAll(mLeDevices);
-                mDevices.removeAll(mDevices);
+                mLeDevices.clear();
+                mDevices.clear();
                 devicesAdapter.notifyItemRangeRemoved(0, deviceCnt);
-                selected_device_position = RecyclerView.NO_POSITION;
+
             }
 
             btLeScanner.startScan(leScanCallback);
@@ -187,10 +206,10 @@ public class ScanningFragment extends Fragment {
 
             // Stops scanning after a predefined scan period by creating new delayed post.
             handler.postDelayed(() -> {
-                if (((MainActivity)getActivity()).mConnectionState ==
+                if (((MainActivity) requireActivity()).mConnectionState ==
                         BT_CONNECTION_STATE.SCANNING) {
 
-                    ((MainActivity)getActivity()).
+                    ((MainActivity) requireActivity()).
                             HandleBleConnection(BT_CONNECTION_STATE.NOT_SCANNING);
 
                     btLeScanner.stopScan(leScanCallback);
@@ -199,10 +218,10 @@ public class ScanningFragment extends Fragment {
                 }
             }, SCAN_PERIOD);
 
-        } else if (((MainActivity)getActivity()).mConnectionState ==
+        } else if (((MainActivity) requireActivity()).mConnectionState ==
                 BT_CONNECTION_STATE.SCANNING) {
 
-            ((MainActivity)getActivity()).
+            ((MainActivity) requireActivity()).
                     HandleBleConnection(BT_CONNECTION_STATE.NOT_SCANNING);
 
             startScanningButton.setText(R.string.StartScan);
@@ -233,8 +252,8 @@ public class ScanningFragment extends Fragment {
                         deviceName,
                         result.getRssi());
 
-        if( (mLeDevices == null) ||
-                (!mLeDevices.contains(device.getBTDeviceAddress()))) {
+        if( ( (mLeDevices == null) && (mDevices == null) ) ||
+                (!Objects.requireNonNull(mLeDevices).contains(device.getBTDeviceAddress()))) {
 
             mLeDevices.add(device.getBTDeviceAddress());
             mDevices.add(device);
@@ -265,7 +284,7 @@ public class ScanningFragment extends Fragment {
 
             // Inflate the custom layout
             view = inflater.inflate(R.layout.recycle_device_item_view, parent, false);
-
+            System.out.println("onCreateViewHolder RV");
             return new BTDevicesRecyclerViewAdapter.ViewHolder(view);
         }
 
@@ -278,11 +297,11 @@ public class ScanningFragment extends Fragment {
                 super(view);
 
                 // Define click listener for the ViewHolder's View
-                view.setOnClickListener((View.OnClickListener) this);
+                view.setOnClickListener(this);
                 //view.setOnLongClickListener((View.OnLongClickListener) this);
 
-                deviceAddress = (TextView) view.findViewById(R.id.device_mac_address);
-                deviceName = (TextView) view.findViewById(R.id.device_name);
+                deviceAddress = view.findViewById(R.id.device_mac_address);
+                deviceName = view.findViewById(R.id.device_name);
             }
 
             @Override
@@ -303,7 +322,7 @@ public class ScanningFragment extends Fragment {
         }
 
         @Override
-        public void onBindViewHolder(@NonNull BTDevicesRecyclerViewAdapter.ViewHolder holder, int position) {
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             // Get element from your dataset at this position and replace the
             // contents of the view with that element
             if (this.DeviceModelArrayList != null){
@@ -313,15 +332,8 @@ public class ScanningFragment extends Fragment {
 
                 holder.getDeviceName().
                         setText(deviceItem.getBTDeviceName());
-
-                if (selected_device_position != RecyclerView.NO_POSITION
-                        && (selected_device_position == position)){
-                    holder.itemView.setBackgroundColor(Color.CYAN);
-                }
-                else {
-                    // light blue
-                    holder.itemView.setBackgroundColor(0xFFD0FDF3);
-                }
+                //set light blue
+                holder.itemView.setBackgroundColor(0xFFD0FDF3);
             }
         }
 
@@ -337,41 +349,29 @@ public class ScanningFragment extends Fragment {
 
     private void createBTDevicesInRecyclerViewAdapter(){
         // Show BT devices in RecyclerView type of List view:
-        devicesRecyclerView = fragment_view.findViewById(R.id.BT_Devices_RecyclerView);
+        RecyclerView devicesRecyclerView = fragment_view.findViewById(R.id.BT_Devices_RecyclerView);
         devicesRecyclerView.setHasFixedSize(false);
 
-        deviceLayoutManager = new LinearLayoutManager(this_context, LinearLayoutManager.VERTICAL, false);
+        RecyclerView.LayoutManager deviceLayoutManager = new LinearLayoutManager(this_context, LinearLayoutManager.VERTICAL, false);
 
         // Applying OnClickListener to RecyclerView adapter
         RVItemDeviceOnClickListener rVItemDeviceOnClickListener=
                 new RVItemDeviceOnClickListener() {
                     @Override
                     public void onClick(int position) {
-                        if (selected_device_position == position) {
-                            // Selected device item is clicked again.
-                            // Start to connect to remote device using
-                            // MAC-address of device-item.
-
+                        // Selected device item is clicked.
+                        // Start to connect to remote device using
+                        // MAC-address of device-item.
+                        if (position != RecyclerView.NO_POSITION){
                             DeviceModel deviceItem = mDevices.get(position);
 
                             // set selected BT-device
-                            ((MainActivity)getActivity()).
+                            ((MainActivity) requireActivity()).
                                     setMyBTDevice(deviceItem.getBTDeviceAddress());
 
                             // trigger connection establishment for selected BT-device
-                            ((MainActivity)getActivity()).
+                            ((MainActivity) requireActivity()).
                                     HandleBleConnection(BT_CONNECTION_STATE.CONNECTING);
-                        }
-                        else {
-                            // Some other item selected.
-                            // Update old as well as new position.
-                            int previous_selected_device_position = selected_device_position;
-                            selected_device_position = position;
-                            devicesAdapter.notifyItemChanged(previous_selected_device_position);
-                            devicesAdapter.notifyItemChanged(selected_device_position);
-//todo
-                            System.out.println("prev: " +
-                                    previous_selected_device_position + " new: " + selected_device_position);
                         }
                     }
                 };

@@ -13,6 +13,7 @@ import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothProfile;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.bluetooth.BluetoothAdapter;
@@ -113,11 +114,38 @@ public class MainActivity extends AppCompatActivity {
 
         // Settings for Connecting-dialog
         builderConnecting = new AlertDialog.Builder(this);
-        builderConnecting.setTitle("Connecting... This may take a moment.");
         builderConnecting.setCancelable(true); // if you want user to wait for some process to finish,
         builderConnecting.setView(R.layout.connection_progress);
-//todo: canceling??
+        // Set negative button for cancelling the connection
+        builderConnecting.setNegativeButton("Cancel connect",
+                (dialog, which) -> {
+                    // Sent disconnect-event
+                    runOnUiThread(() -> {
+                        HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTED);
+                        dialog.cancel();
+                    });
+                });
+
         dialogConnecting = builderConnecting.create();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        System.out.println("onStop main");
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        System.out.println("onPause main");
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        dialogConnecting.dismiss();
+        System.out.println("onDestroy main");
     }
 
     // Function to check and request permission.
@@ -218,6 +246,8 @@ public class MainActivity extends AppCompatActivity {
                 // because we probably are here in UI-thread
                 // (trigger came also from UI from ScanningFragment).
                 runOnUiThread(() -> {
+                    dialogConnecting.setTitle("Connecting to \'\'" +
+                            getMyBTDevice().getName() + "\'\' ...");
                     dialogConnecting.show();
                 });
 
