@@ -102,6 +102,9 @@ public class ConnectedFragment extends Fragment {
                 if (((MainActivity) requireActivity()).mConnectionState ==
                         BT_CONNECTION_STATE.CONNECTED) {
 
+                    // DISCONNECTING-event is generated only, when normal local disconnect is done.
+                    // E.g disconnect from remote device is detected by BT gatt-callback,
+                    // causing DISCONNECTED-event to be generated.
                     ((MainActivity) requireActivity()).
                             HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTING);
                 }

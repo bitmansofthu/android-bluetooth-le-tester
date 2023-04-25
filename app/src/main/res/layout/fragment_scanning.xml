@@ -34,7 +34,7 @@
         android:layout_marginStart="16dp"
         android:layout_marginTop="40dp"
         android:clickable="true"
-        android:longClickable="false"
+        android:longClickable="true"
         android:padding="10dp"
         android:scrollbarStyle="outsideInset"
         android:scrollbars="vertical"

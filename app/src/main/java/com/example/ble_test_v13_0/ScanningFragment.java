@@ -9,7 +9,6 @@ import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
 import android.content.Context;
-import android.graphics.Color;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -267,12 +266,16 @@ public class ScanningFragment extends Fragment {
         public Context context;
         final private RVItemDeviceOnClickListener onClickListener;
 
+        final private RVItemDeviceOnLongClickListener longClickListener;
+
         public BTDevicesRecyclerViewAdapter(ArrayList<DeviceModel> DeviceList,
                                             RVItemDeviceOnClickListener onClickListener,
+                                            RVItemDeviceOnLongClickListener onLongClickListener,
                                             Context context) {
             this.DeviceModelArrayList = DeviceList;
             this.context = context;
             this.onClickListener = onClickListener;
+            this.longClickListener = onLongClickListener;
         }
 
         @NonNull
@@ -288,7 +291,9 @@ public class ScanningFragment extends Fragment {
             return new BTDevicesRecyclerViewAdapter.ViewHolder(view);
         }
 
-        public class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener{
+        public class ViewHolder extends RecyclerView.ViewHolder
+                implements View.OnClickListener, View.OnLongClickListener
+        {
             private final TextView deviceAddress;
             private final TextView deviceName;
             //private final TextView deviceSignal;
@@ -298,7 +303,7 @@ public class ScanningFragment extends Fragment {
 
                 // Define click listener for the ViewHolder's View
                 view.setOnClickListener(this);
-                //view.setOnLongClickListener((View.OnLongClickListener) this);
+                view.setOnLongClickListener((View.OnLongClickListener) this);
 
                 deviceAddress = view.findViewById(R.id.device_mac_address);
                 deviceName = view.findViewById(R.id.device_name);
@@ -311,6 +316,16 @@ public class ScanningFragment extends Fragment {
                 if (position > RecyclerView.NO_POSITION) {
                     onClickListener.onClick(position);
                 }
+            }
+
+            @Override
+            public boolean onLongClick(View v) {
+                int position = getBindingAdapterPosition();
+
+                if (position > RecyclerView.NO_POSITION) {
+                    return longClickListener.onLongClick(position);
+                }
+                return false;
             }
 
             public TextView getDeviceAddress() {
@@ -357,8 +372,16 @@ public class ScanningFragment extends Fragment {
         // Applying OnClickListener to RecyclerView adapter
         RVItemDeviceOnClickListener rVItemDeviceOnClickListener=
                 new RVItemDeviceOnClickListener() {
-                    @Override
+
                     public void onClick(int position) {
+                    }
+                };
+
+        // Applying OnClickListener to RecyclerView adapter
+        RVItemDeviceOnLongClickListener rVItemDeviceOnLongClickListener=
+                new RVItemDeviceOnLongClickListener() {
+
+                    public boolean onLongClick(int position) {
                         // Selected device item is clicked.
                         // Start to connect to remote device using
                         // MAC-address of device-item.
@@ -373,11 +396,13 @@ public class ScanningFragment extends Fragment {
                             ((MainActivity) requireActivity()).
                                     HandleBleConnection(BT_CONNECTION_STATE.CONNECTING);
                         }
+                        return true;
                     }
                 };
 
         devicesAdapter = new BTDevicesRecyclerViewAdapter(mDevices,
                 rVItemDeviceOnClickListener,
+                rVItemDeviceOnLongClickListener,
                 this_context);
 
         devicesRecyclerView.setLayoutManager(deviceLayoutManager);

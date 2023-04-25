@@ -24,12 +24,13 @@ import android.widget.Toast;
 import static android.Manifest.permission.BLUETOOTH_SCAN;
 import static android.Manifest.permission.BLUETOOTH_CONNECT;
 
+// Connection states. Used also as events for triggering the state-change.
 enum BT_CONNECTION_STATE {
     NOT_SCANNING,
     SCANNING,
     CONNECTING,
     CONNECTED,
-    DISCONNECTING,
+    DISCONNECTING, // use this trigger for disconnecting only the connected device
     DISCONNECTED
 }
 
@@ -116,16 +117,6 @@ public class MainActivity extends AppCompatActivity {
         builderConnecting = new AlertDialog.Builder(this);
         builderConnecting.setCancelable(true); // if you want user to wait for some process to finish,
         builderConnecting.setView(R.layout.connection_progress);
-        // Set negative button for cancelling the connection
-        builderConnecting.setNegativeButton("Cancel connect",
-                (dialog, which) -> {
-                    // Sent disconnect-event
-                    runOnUiThread(() -> {
-                        HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTED);
-                        dialog.cancel();
-                    });
-                });
-
         dialogConnecting = builderConnecting.create();
     }
 
@@ -215,9 +206,8 @@ public class MainActivity extends AppCompatActivity {
                 // disconnected from the GATT Server
                 HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTED);
             }
-            else{
-                System.out.println("BluetoothGattCallback: new state " + newState+ ". What to do with this event?");
-            }
+            //todo
+            System.out.println("BluetoothGattCallback: new state " + newState+ "| status: " + status);
         }
     };
 
@@ -243,7 +233,7 @@ public class MainActivity extends AppCompatActivity {
                 // Show Connecting-dialog (with progress-spinner).
                 // Better to execute with the help of runOnUiThread
                 // which should execute this in any case immediately,
-                // because we probably are here in UI-thread
+                // because we probably are already in UI-thread
                 // (trigger came also from UI from ScanningFragment).
                 runOnUiThread(() -> {
                     dialogConnecting.setTitle("Connecting to \'\'" +
@@ -260,7 +250,7 @@ public class MainActivity extends AppCompatActivity {
 
             mConnectionState = BT_CONNECTION_STATE.CONNECTED;
             // CONNECTED-event comes from BT-interface (via Callback),
-            // so we are probably now on non-UI thread.
+            // so we are probably now on 'non-UI' thread.
             // Hide Connecting-dialog with runOnUiThread.
             //  -Runs the specified action on the UI thread:
             //    If the current thread is the UI thread,
@@ -283,22 +273,45 @@ public class MainActivity extends AppCompatActivity {
                     .replace(R.id.fragment_container_view, ConnectedFragment.class, null, "CONNECTION")
                     .commit();
             });
-
         }
         else if (stateChange == BT_CONNECTION_STATE.DISCONNECTING){
-            if (mConnectionState == BT_CONNECTION_STATE.CONNECTING){
-                // disconnect before the connection is established
-                mConnectionState = BT_CONNECTION_STATE.NOT_SCANNING;
-                btGatt.close();
-            }
-            else {
-                // disconnect after the connection is established
+            if (mConnectionState == BT_CONNECTION_STATE.CONNECTED){
+                // Disconnect normally (from UI), after the connection is established
                 mConnectionState = BT_CONNECTION_STATE.DISCONNECTING;
                 btGatt.disconnect();
             }
+            else {
+                // Disconnect normally (from UI) before the connection is established.
+                // This shouldn't occur, because there is not even Disconnect-button (Connection-Fragment)
+                // visible yet...
+                mConnectionState = BT_CONNECTION_STATE.NOT_SCANNING;
+                System.out.println("Failure: disconnect in state" + mConnectionState); //todo: -> LOG!!
+
+                btGatt.close();
+            }
         }
         else if (stateChange == BT_CONNECTION_STATE.DISCONNECTED){
-            if (mConnectionState == BT_CONNECTION_STATE.CONNECTING){
+            if (mConnectionState == BT_CONNECTION_STATE.DISCONNECTING){
+                // Disconnecting the remote device succeeded:
+                // CONNECTED -> DISCONNECTING-event -> DISCONNECTING (when using DISCONNECT-button).
+
+                // Show Scanning-fragment instead of Connection-fragment
+                runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this, "Disconnected from your BLE device",
+                            Toast.LENGTH_SHORT).show();
+
+                    fm = getSupportFragmentManager();
+                    ft = fm.beginTransaction();
+                    ft
+                            .setReorderingAllowed(true)
+                            .replace(R.id.fragment_container_view, ScanningFragment.class, null, "SCAN")
+                            .commit();
+                });
+            }
+            else{
+                // Establishment of the connection failed.
+                // If: CONNECTED -> DISCONNECTED-event (from BT-callback),
+                // we lost connection from remote-device.
 
                 //Hide Connecting-dialog in separate thread. Otherwise next error:
                 //    W/BluetoothGatt: Unhandled exception in callback
@@ -309,26 +322,7 @@ public class MainActivity extends AppCompatActivity {
                     dialogConnecting.hide();
                     Toast.makeText(MainActivity.this, "Failed to connect to the remote device!", Toast.LENGTH_SHORT).show();
                 });
-            }
-            else{
-                // show Scanning-fragment instead of Connection-fragment
 
-                // Disconnection should go via states:
-                //  CONNECTED -> DISCONNECTING-event -> DISCONNECTING (when using DISCONNECT-button).
-                // If: CONNECTED -> DISCONNECTED-event (from BT-callback),
-                // we lost connection from remote-device.
-
-                runOnUiThread(() -> {
-                    Toast.makeText(MainActivity.this, "Disconnected from your BLE device",
-                              Toast.LENGTH_SHORT).show();
-
-                    fm = getSupportFragmentManager();
-                    ft = fm.beginTransaction();
-                    ft
-                            .setReorderingAllowed(true)
-                            .replace(R.id.fragment_container_view, ScanningFragment.class, null, "SCAN")
-                            .commit();
-                });
             }
 
             mConnectionState = BT_CONNECTION_STATE.NOT_SCANNING;
