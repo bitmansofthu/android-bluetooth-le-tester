@@ -59,7 +59,7 @@ public class ScanningFragment extends Fragment {
     // (if not stopped manually earlier).
     static final long SCAN_PERIOD = 60000; // ms
 
-    Handler handler = new Handler(Looper.myLooper());
+    Handler scanning_handler = new Handler(Looper.myLooper());
 
     private RecyclerView.Adapter devicesAdapter;
 
@@ -201,10 +201,10 @@ public class ScanningFragment extends Fragment {
 
             // remove all messages (some delayed posts might still
             // be in the message queue)
-            handler.removeCallbacksAndMessages(null);
+            scanning_handler.removeCallbacksAndMessages(null);
 
             // Stops scanning after a predefined scan period by creating new delayed post.
-            handler.postDelayed(() -> {
+            scanning_handler.postDelayed(() -> {
                 if (((MainActivity) requireActivity()).mConnectionState ==
                         BT_CONNECTION_STATE.SCANNING) {
 
@@ -230,7 +230,7 @@ public class ScanningFragment extends Fragment {
 
             // remove all messages (some delayed posts might still
             // be in the message queue)
-            handler.removeCallbacksAndMessages(null);
+            scanning_handler.removeCallbacksAndMessages(null);
         }
     }
 

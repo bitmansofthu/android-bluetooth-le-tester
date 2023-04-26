@@ -20,10 +20,13 @@ import android.os.Bundle;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.Toast;
 
 import static android.Manifest.permission.BLUETOOTH_SCAN;
 import static android.Manifest.permission.BLUETOOTH_CONNECT;
+import static android.view.View.INVISIBLE;
 
 // Connection states. Used also as events for triggering the state-change.
 enum BT_CONNECTION_STATE {
@@ -31,7 +34,7 @@ enum BT_CONNECTION_STATE {
     SCANNING,
     CONNECTING,
     CONNECTED,
-    DISCONNECTING, // use this trigger for disconnecting only the connected device
+    DISCONNECTING, // use this event for the disconnect-event triggered by this local device (me)
     DISCONNECTED
 }
 
@@ -42,7 +45,10 @@ public class MainActivity extends AppCompatActivity {
 
     BluetoothGatt btGatt;
 
-    final int REQUEST_ENABLE_BT = 1;
+    // Stop connecting automatically after 30 seconds, if connection was not established.
+    static final long CONNECTING_PERIOD = 30000; // ms
+
+    Handler connection_handler = new Handler(Looper.myLooper());
 
     AlertDialog.Builder builderConnecting;
     AlertDialog dialogConnecting;
@@ -52,7 +58,6 @@ public class MainActivity extends AppCompatActivity {
 
     public BT_CONNECTION_STATE mConnectionState = BT_CONNECTION_STATE.NOT_SCANNING;
 
-    String mMyDevice;
     BluetoothDevice mMyBTDevice;
 
     FragmentManager fm;
@@ -130,10 +135,28 @@ public class MainActivity extends AppCompatActivity {
         System.out.println("onDestroy main");
     }
 
+    // Start timer for monitoring the establishment of connection.
+    // If it's still connecting after CONNECTING_PERIOD, reset the connection establishment.
+    private void controlConnectingTimer(BT_CONNECTION_STATE connectionState) {
+        if (connectionState == BT_CONNECTION_STATE.CONNECTING){
+            connection_handler.postDelayed(() -> {
+                // after timeout start to disconnect (if still connecting)
+                if (mConnectionState == BT_CONNECTION_STATE.CONNECTING) {
+                    HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTING);
+                }
+            }, CONNECTING_PERIOD);
+        }
+        else{
+            // reset timer in any other state
+            connection_handler.removeCallbacksAndMessages(null);
+        }
+    }
+
     private void createProgressSpinnerForConnectingAlertDialog() {
         builderConnecting = new AlertDialog.Builder(this)
-            // User can close this Modal-dialog by pressing Back-button. Todo: is it good idea?
-            .setCancelable(true)
+            // User cannot close this Modal-dialog by e.g. pressing Back-button.
+            // It's closed by timeout or after successful connection.
+            .setCancelable(false)
             .setView(R.layout.connection_progress);
 
         dialogConnecting = builderConnecting.create();
@@ -187,8 +210,10 @@ public class MainActivity extends AppCompatActivity {
                  shouldShowRequestPermissionRationale(BLUETOOTH_CONNECT)) {
 
             showScanConnectRuntimePermissionMessage("You will next need to allow permissions for finding " +
-                            "and connecting Bluetooth Low Energy devices! Seriously, if you now deny permissions, " +
-                            "you will need to uninstall and install BLE tester again to proceed for allowing permissions." +
+                            "Bluetooth Low Energy devices from neighbourhood, and connecting to the selected device. " +
+                            "Seriously, if you now deny permissions, " +
+                            "you will need to uninstall and install BLE tester application again to proceed " +
+                            "for allowing permissions next time, and start to use the application. " +
                             "BLE tester is totally useless application without desired runtime permissions, " +
                             "and will stop running..." ,
                 new DialogInterface.OnClickListener() {
@@ -286,18 +311,21 @@ public class MainActivity extends AppCompatActivity {
         }
         else if (stateChange == BT_CONNECTION_STATE.CONNECTING){
             if (mConnectionState == BT_CONNECTION_STATE.NOT_SCANNING){
-                mConnectionState = BT_CONNECTION_STATE.CONNECTING;
-
                 // Show Connecting-dialog (with progress-spinner).
                 // Better to execute with the help of runOnUiThread
                 // which should execute this in any case immediately,
-                // because we probably are already in UI-thread
+                // although we probably are also now executing UI-thread
                 // (trigger came also from UI from ScanningFragment).
                 runOnUiThread(() -> {
                     dialogConnecting.setTitle("Connecting to \'\'" +
                             getMyBTDevice().getName() + "\'\' ...");
                     dialogConnecting.show();
+
+                    // start Connecting-timer to elapse for avoiding to connect for ages...
+                    controlConnectingTimer(BT_CONNECTION_STATE.CONNECTING);
                 });
+
+                mConnectionState = BT_CONNECTION_STATE.CONNECTING;
 
                 // Start connecting to the remote device.
                 btGatt = getMyBTDevice().connectGatt(MainActivity.this,
@@ -307,6 +335,10 @@ public class MainActivity extends AppCompatActivity {
         else if (stateChange == BT_CONNECTION_STATE.CONNECTED){
 
             mConnectionState = BT_CONNECTION_STATE.CONNECTED;
+
+            // reset Connecting-timer
+            controlConnectingTimer(BT_CONNECTION_STATE.CONNECTED);
+
             // CONNECTED-event comes from BT-interface (via Callback),
             // so we are probably now on 'non-UI' thread.
             // Hide Connecting-dialog with runOnUiThread.
@@ -333,25 +365,34 @@ public class MainActivity extends AppCompatActivity {
             });
         }
         else if (stateChange == BT_CONNECTION_STATE.DISCONNECTING){
+
+            // Disconnecting-event triggered by this local device
+
             if (mConnectionState == BT_CONNECTION_STATE.CONNECTED){
-                // Disconnect normally (from UI), after the connection is established
+                // normal disconnect (from UI) after, the connection is established
                 mConnectionState = BT_CONNECTION_STATE.DISCONNECTING;
                 btGatt.disconnect();
             }
             else {
-                // Disconnect normally (from UI) before the connection is established.
-                // This shouldn't occur, because there is not even Disconnect-button (Connection-Fragment)
-                // visible yet...
+                // Disconnect (by timeout) before the connection is established.
                 mConnectionState = BT_CONNECTION_STATE.NOT_SCANNING;
-                System.out.println("Failure: disconnect in state" + mConnectionState); //todo: -> LOG!!
+                System.out.println("Failed to connect to remote device. Canceled by timeout."); //todo: -> LOG!!
 
-                btGatt.close();
+                runOnUiThread(() -> {
+                    dialogConnecting.hide();
+                    Toast.makeText(MainActivity.this, "Failed to connect to the remote device!", Toast.LENGTH_SHORT).show();
+                });
+
+                if (btGatt != null){
+                    // Close gatt-interface (if there is any interface available anymore). BT-interface might be stuck.
+                    btGatt.close();
+                }
             }
         }
         else if (stateChange == BT_CONNECTION_STATE.DISCONNECTED){
             if (mConnectionState == BT_CONNECTION_STATE.DISCONNECTING){
-                // Disconnecting the remote device succeeded:
-                // CONNECTED -> DISCONNECTING-event -> DISCONNECTING (when using DISCONNECT-button).
+                // Normal local disconnecting to the remote device succeeded:
+                // CONNECTED -> DISCONNECTING-event -> DISCONNECTING -> DISCONNECTED-event (when using DISCONNECT-button).
 
                 // Show Scanning-fragment instead of Connection-fragment
                 runOnUiThread(() -> {
@@ -367,9 +408,15 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
             else{
-                // Establishment of the connection failed.
-                // If: CONNECTED -> DISCONNECTED-event (from BT-callback),
-                // we lost connection from remote-device.
+                // 1) Establishment of the connection failed (BT-interface via callback triggered this).
+                //      CONNECTING -> DISCONNECTED-event,
+                //       or
+                // 2) We were in connected state, but we lost connection from remote-device
+                //    (e.g. weak signal or remote device was unpowered).
+                //     CONNECTED -> DISCONNECTED-event,
+
+                // BT_CONNECTION_STATE.DISCONNECTED event is always triggered from BT-interface (see callback)
+                // so BT-interface is alive. No specific reset for interface is needed here...
 
                 //Hide Connecting-dialog in separate thread. Otherwise next error:
                 //    W/BluetoothGatt: Unhandled exception in callback
