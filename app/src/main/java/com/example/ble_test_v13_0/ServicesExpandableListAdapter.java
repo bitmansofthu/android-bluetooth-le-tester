@@ -15,6 +15,16 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     private ArrayList<ServiceModel> groupArrayList;
     private ArrayList<ArrayList<CharacteristicsModel>> childArrayList;
 
+    // View lookup cache
+    private static class ViewHolderParent {
+        TextView ServiceNameTextListView;
+        TextView ServiceUuidListTextView;
+    }
+
+    private static class ViewHolderChild {
+        TextView CharUuidExpandedView;
+    }
+
     public ServicesExpandableListAdapter(Context context, ArrayList<ServiceModel> groupArrayList,
                                          ArrayList<ArrayList<CharacteristicsModel>> childArrayList) {
         this.context = context;
@@ -68,19 +78,34 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
         String service_name = service.getServiceName();
         String service_uuid = service.getServiceUUID();
 
+        ViewHolderParent viewHolder; // view lookup cache stored in tag
+
         if (convertView == null) {
+            viewHolder = new ViewHolderParent();
+
             LayoutInflater layoutInflater = (LayoutInflater) this.context.
                     getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+
             convertView = layoutInflater.inflate(R.layout.list_service_item_view, null);
+
+            viewHolder.ServiceNameTextListView = (TextView) convertView.
+                                                    findViewById(R.id.service_group_name);
+            viewHolder.ServiceNameTextListView.setTypeface(null, Typeface.BOLD);
+
+            viewHolder.ServiceUuidListTextView = (TextView) convertView.
+                                                    findViewById(R.id.service_group_id);
+            viewHolder.ServiceUuidListTextView.setTypeface(null, Typeface.BOLD);
+
+            convertView.setTag(viewHolder); // Cache the viewHolder object inside the fresh view
         }
-        TextView ServiceNameTextListView = (TextView) convertView
-                .findViewById(R.id.service_group_name);
-        ServiceNameTextListView.setTypeface(null, Typeface.BOLD);
-        ServiceNameTextListView.setText(service_name);
-        TextView ServiceUuidListTextView = (TextView) convertView
-                .findViewById(R.id.service_group_id);
-        ServiceUuidListTextView.setTypeface(null, Typeface.BOLD);
-        ServiceUuidListTextView.setText(service_uuid);
+        else {
+            // View is being recycled, retrieve the viewHolder object from tag
+            viewHolder = (ViewHolderParent) convertView.getTag();
+        }
+        // Populate the data from the data object via the viewHolder object
+        // into the template view.
+        viewHolder.ServiceNameTextListView.setText(service_name);
+        viewHolder.ServiceUuidListTextView.setText(service_uuid);
 
         return convertView;
     }
@@ -90,14 +115,28 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
                              View convertView, ViewGroup parent) {
         CharacteristicsModel characteristic = (CharacteristicsModel)getChild(groupPosition, childPosition);
 
+        ViewHolderChild viewHolder; // view lookup cache stored in tag
+
         if (convertView == null) {
+            viewHolder = new ViewHolderChild();
+
             LayoutInflater layoutInflater = (LayoutInflater) this.context
                     .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
             convertView = layoutInflater.inflate(R.layout.list_characteristic_item_view, null);
+
+            viewHolder.CharUuidExpandedView = (TextView) convertView.
+                    findViewById(R.id.expanded_characteristic_list_item);
+
+            convertView.setTag(viewHolder); // Cache the viewHolder object inside the fresh view
         }
-        TextView CharUuidExpandedView = (TextView) convertView
-                .findViewById(R.id.expanded_characteristic_list_item);
-        CharUuidExpandedView.setText(characteristic.getCharacteristicsUUID());
+        else {
+            // View is being recycled, retrieve the viewHolder object from tag
+            viewHolder = (ViewHolderChild) convertView.getTag();
+        }
+
+        // Populate the data from the data object via the viewHolder object
+        // into the template view.
+        viewHolder.CharUuidExpandedView.setText(characteristic.getCharacteristicsUUID());
 
         return convertView;
     }
