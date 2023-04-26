@@ -4,12 +4,14 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 
 import android.content.Context;
@@ -22,11 +24,16 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.widget.Toast;
 
 import static android.Manifest.permission.BLUETOOTH_SCAN;
 import static android.Manifest.permission.BLUETOOTH_CONNECT;
+import static android.content.ContentValues.TAG;
 import static android.view.View.INVISIBLE;
+
+import java.util.List;
+import java.util.Objects;
 
 // Connection states. Used also as events for triggering the state-change.
 enum BT_CONNECTION_STATE {
@@ -292,6 +299,18 @@ public class MainActivity extends AppCompatActivity {
             //todo
             System.out.println("BluetoothGattCallback: new state " + newState+ "| status: " + status);
         }
+
+        @Override
+        public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                runOnUiThread(() -> {
+                    ((ConnectedFragment) Objects.requireNonNull
+                            (fm.findFragmentByTag("CONNECTION"))).GattServicesDiscovered();
+                });
+            } else {
+                Log.w(TAG, "onServicesDiscovered received: " + status);
+            }
+        }
     };
 
 
@@ -406,6 +425,7 @@ public class MainActivity extends AppCompatActivity {
                             .replace(R.id.fragment_container_view, ScanningFragment.class, null, "SCAN")
                             .commit();
                 });
+
             }
             else{
                 // 1) Establishment of the connection failed (BT-interface via callback triggered this).

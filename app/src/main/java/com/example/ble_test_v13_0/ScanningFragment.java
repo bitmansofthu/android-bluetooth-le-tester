@@ -133,7 +133,7 @@ public class ScanningFragment extends Fragment {
     @Override
     public void onStop() {
         super.onStop();
-        System.out.println("onStop scan fragment");
+        System.out.println("onStop scan fragment"); //todo
     }
 
     @Override
