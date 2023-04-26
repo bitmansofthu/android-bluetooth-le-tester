@@ -15,6 +15,7 @@ import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -46,10 +47,8 @@ public class MainActivity extends AppCompatActivity {
     AlertDialog.Builder builderConnecting;
     AlertDialog dialogConnecting;
 
-    // Define Permission codes for Scan and Connect.
-    // Give any value but unique for each permission...
-    private static final int BT_SCAN_PERMISSION_CODE = 100;
-    private static final int BT_CONNECT_PERMISSION_CODE = 101;
+    // Define Permission code for Scan and Connect.
+    private static final int BT_SCAN_CONNECT_PERMISSION_CODE = 100;
 
     public BT_CONNECTION_STATE mConnectionState = BT_CONNECTION_STATE.NOT_SCANNING;
 
@@ -100,24 +99,16 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         if (!btAdapter.isEnabled()) {
-            // TODO!!!!!
-            // startActivityForResult is deprecated, try with some newer way...
-            //Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            //startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
-
-            Toast.makeText(MainActivity.this, "Bluetooth not enabled!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(MainActivity.this, "Bluetooth not enabled! Enable it from Settings.", Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
 
-        checkAndRequestPermission(BLUETOOTH_SCAN, BT_SCAN_PERMISSION_CODE);
-        checkAndRequestPermission(BLUETOOTH_CONNECT, BT_CONNECT_PERMISSION_CODE);
+        checkAndRequestPermissions(); // validate BT SCAN/CONNECT permissions
 
         // Settings for Connecting-dialog
-        builderConnecting = new AlertDialog.Builder(this);
-        builderConnecting.setCancelable(true); // if you want user to wait for some process to finish,
-        builderConnecting.setView(R.layout.connection_progress);
-        dialogConnecting = builderConnecting.create();
+        createProgressSpinnerForConnectingAlertDialog();
+
     }
 
     @Override
@@ -139,30 +130,84 @@ public class MainActivity extends AppCompatActivity {
         System.out.println("onDestroy main");
     }
 
+    private void createProgressSpinnerForConnectingAlertDialog() {
+        builderConnecting = new AlertDialog.Builder(this)
+            // User can close this Modal-dialog by pressing Back-button. Todo: is it good idea?
+            .setCancelable(true)
+            .setView(R.layout.connection_progress);
+
+        dialogConnecting = builderConnecting.create();
+    }
+
+    private void showScanConnectRuntimePermissionMessage(String message, DialogInterface.OnClickListener okListener) {
+        new AlertDialog.Builder(MainActivity.this)
+                .setMessage(message)
+                .setPositiveButton("I understand", okListener)
+                .create()
+                .show();
+    }
+
     // Function to check and request permission.
-    public void checkAndRequestPermission(String permission, int requestCode)
-    {
-        // TODO: Consider calling
-        //    ActivityCompat#requestPermissions
-        // here to request the missing permissions, and then overriding
+    public void checkAndRequestPermissions() {
+        String[] permissions = {BLUETOOTH_SCAN, BLUETOOTH_CONNECT};
+
+        // Check and request the missing permissions, and then override
         //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
         //                                          int[] grantResults)
         // to handle the case where the user grants the permission. See the documentation
         // for ActivityCompat#requestPermissions for more details.
 
-        if (ActivityCompat.checkSelfPermission(MainActivity.this, permission) == PackageManager.PERMISSION_DENIED) {
-            // Requesting the permission
-            ActivityCompat.requestPermissions(MainActivity.this, new String[] { permission }, requestCode);
+        if ( (ActivityCompat.checkSelfPermission(MainActivity.this, permissions[0]) ==
+                PackageManager.PERMISSION_GRANTED)
+                        &&
+          (ActivityCompat.checkSelfPermission(MainActivity.this, permissions[1]) ==
+                 PackageManager.PERMISSION_GRANTED))
+        {
+            Toast.makeText(MainActivity.this,
+                   "Permission for scanning and connecting devices granted previously",
+                    Toast.LENGTH_LONG).show();
         }
-        else if (requestCode == BT_SCAN_PERMISSION_CODE){
-            Toast.makeText(MainActivity.this, "Permission for scanning devices granted previously", Toast.LENGTH_SHORT).show();
+        // Requesting the permissions.
+        // Request both permissions at once. When trying two consecutive requestPermissions,
+        // Android started to complain...
+
+        // First time after installation, naturally there are no permissions, so requestPermissions()
+        // is called directly (see last else). If user denies to give permissions, application closes.
+        // After restarting the application shouldShowRequestPermissionRationale
+        // returns true, and Rationale helper-dialog (showScanConnectRuntimePermissionMessage) is shown
+        // before requesting permissions again.
+        // This is the second (and last) chance to permit to use the application.
+        // Next restarts will fall down to requestPermissions() (see last else), because shouldShowRequestPermissionRationale
+        // starts to return false.
+        // Now Android-OS doesn't show any permission-dialog anymore. We are in 'Don't ask anymore' state.
+        // Some earlier OS-versions included 'Don't ask anymore' selection, but nowadays OS decides automatically behalf of the user...
+        // Application will close in any new attempts. Only uninstall/install application and starting the procedure again helps...
+
+        else if (shouldShowRequestPermissionRationale(BLUETOOTH_SCAN) &&
+                 shouldShowRequestPermissionRationale(BLUETOOTH_CONNECT)) {
+
+            showScanConnectRuntimePermissionMessage("You will next need to allow permissions for finding " +
+                            "and connecting Bluetooth Low Energy devices! Seriously, if you now deny permissions, " +
+                            "you will need to uninstall and install BLE tester again to proceed for allowing permissions." +
+                            "BLE tester is totally useless application without desired runtime permissions, " +
+                            "and will stop running..." ,
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        ActivityCompat.requestPermissions(MainActivity.this,
+                                new String[]{ permissions[0], permissions[1] },
+                                BT_SCAN_CONNECT_PERMISSION_CODE);
+                    }
+                });
         }
-        else if (requestCode == BT_CONNECT_PERMISSION_CODE){
-            Toast.makeText(MainActivity.this, "Permission for connecting devices granted previously", Toast.LENGTH_SHORT).show();
+        else{
+            ActivityCompat.requestPermissions(MainActivity.this,
+                    new String[] { permissions[0], permissions[1] },
+                    BT_SCAN_CONNECT_PERMISSION_CODE);
         }
     }
 
-    // This function is called when the user accepts or decline the permission.
+    // This function is called when the user accepts or declines the permissions.
     // Request Code is used to check which permission called this function.
     // This request code is provided when the user is prompt for permission.
     @Override
@@ -174,26 +219,39 @@ public class MainActivity extends AppCompatActivity {
                 permissions,
                 grantResults);
 
-        if (grantResults.length > 0){
-            if (requestCode == BT_SCAN_PERMISSION_CODE) {
-                if ( grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(MainActivity.this, "BT SCAN Permission Granted", Toast.LENGTH_SHORT) .show();
-                }
-                else {
-                    Toast.makeText(MainActivity.this, "BT SCAN Permission Denied", Toast.LENGTH_SHORT) .show();
-                }
+        boolean scanAccepted;
+        boolean connectionAccepted;
+
+        if ( (grantResults.length > 1) && (requestCode == BT_SCAN_CONNECT_PERMISSION_CODE)){
+            scanAccepted = (grantResults[0] == PackageManager.PERMISSION_GRANTED);
+            connectionAccepted = (grantResults[1] == PackageManager.PERMISSION_GRANTED);
+
+            if ( scanAccepted) {
+                Toast.makeText(MainActivity.this, "BT SCAN Permission Granted", Toast.LENGTH_SHORT) .show();
             }
-            else if (requestCode == BT_CONNECT_PERMISSION_CODE) {
-                if ( grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(MainActivity.this, "BT CONNECTION Permission Granted", Toast.LENGTH_SHORT) .show();
-                }
-                else {
-                    Toast.makeText(MainActivity.this, "BT CONNECTION Permission Denied", Toast.LENGTH_SHORT) .show();
-                }
+            else {
+                Toast.makeText(MainActivity.this, "BT SCAN Permission Denied", Toast.LENGTH_SHORT) .show();
+            }
+
+            if ( connectionAccepted) {
+                Toast.makeText(MainActivity.this, "BT CONNECTION Permission Granted", Toast.LENGTH_SHORT) .show();
+            }
+            else {
+                Toast.makeText(MainActivity.this, "BT CONNECTION Permission Denied", Toast.LENGTH_SHORT) .show();
             }
         }
-    }
+        else {
+            scanAccepted = false;
+            connectionAccepted = false;
+        }
 
+        if (!scanAccepted && !connectionAccepted){
+            Toast.makeText(MainActivity.this, "You need to allow permissions for finding (scan) and connecting Bluetooth-devices", Toast.LENGTH_LONG) .show();
+            Toast.makeText(MainActivity.this, "Start BLE tester again!", Toast.LENGTH_LONG) .show();
+
+            finish(); // No sense to continue. Finish the application.
+        }
+    }
 
     private final BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
         @Override
