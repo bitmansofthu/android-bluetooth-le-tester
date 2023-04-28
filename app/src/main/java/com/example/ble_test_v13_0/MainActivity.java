@@ -11,6 +11,7 @@ import androidx.fragment.app.FragmentTransaction;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 
@@ -308,10 +309,30 @@ public class MainActivity extends AppCompatActivity {
                             (fm.findFragmentByTag("CONNECTION"))).GattServicesDiscovered();
                 });
             } else {
-                Log.w(TAG, "onServicesDiscovered received: " + status);
+                Log.w(TAG, "onServicesDiscovered status: " + status);
             }
         }
-    };
+
+        @Override
+        public void onCharacteristicRead(
+                BluetoothGatt gatt,
+                BluetoothGattCharacteristic characteristic,
+                byte[] value,
+                int status
+        )
+        {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+
+                runOnUiThread(() -> {
+                ((ConnectedFragment) Objects.requireNonNull
+                        (fm.findFragmentByTag("CONNECTION"))).
+                        GattCharacteristicsValueReceived(characteristic, value);
+            });
+            } else {
+                Log.w(TAG, "onCharacteristicRead status: " + status);
+            }
+        }
+};
 
 
     @SuppressLint("MissingPermission")
@@ -412,6 +433,8 @@ public class MainActivity extends AppCompatActivity {
             if (mConnectionState == BT_CONNECTION_STATE.DISCONNECTING){
                 // Normal local disconnecting to the remote device succeeded:
                 // CONNECTED -> DISCONNECTING-event -> DISCONNECTING -> DISCONNECTED-event (when using DISCONNECT-button).
+
+                btGatt.close();
 
                 // Show Scanning-fragment instead of Connection-fragment
                 runOnUiThread(() -> {

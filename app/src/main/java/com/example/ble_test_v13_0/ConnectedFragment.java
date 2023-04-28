@@ -9,6 +9,7 @@ import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -50,6 +51,10 @@ public class ConnectedFragment extends Fragment {
     ArrayList<ServiceModel> serviceModelArrayList = new ArrayList<>();
     ArrayList<ArrayList<CharacteristicsModel>> characteristicsModelArrayList =
             new ArrayList<ArrayList<CharacteristicsModel>>();
+
+    ArrayList<ArrayList<BluetoothGattCharacteristic>> BTcharacteristicsArrayOfArrayList =
+            new ArrayList<>();
+
 
     public ConnectedFragment() {
         // Required empty public constructor
@@ -130,6 +135,17 @@ public class ConnectedFragment extends Fragment {
         ((MainActivity) requireActivity()).btGatt.discoverServices();
     }
 
+    public void GattCharacteristicsValueReceived(BluetoothGattCharacteristic characteristic,
+                                                 byte[] value)
+    {
+        final StringBuilder string = new StringBuilder(value.length);
+        for(byte byteChar : value)
+            string.append(String.format("%02X ", byteChar));
+        //new String(value) + "\n" + string.toString())
+        //System.out.println("onCharacteristicRead: " + string);
+        //characteristicsModelArrayList.set()
+    }
+
     @SuppressLint("MissingPermission")
     public void GattServicesDiscovered(){
 
@@ -142,18 +158,24 @@ public class ConnectedFragment extends Fragment {
             List<BluetoothGattCharacteristic> gattCharacteristics =
                     gattService.getCharacteristics();
 
-            serviceModelArrayList.add(new ServiceModel("PROFILE", gattService.getUuid().toString()));
+            serviceModelArrayList.add(new ServiceModel("SERVICE", gattService.getUuid().toString()));
 
             ArrayList<CharacteristicsModel> CharPerServiceArrayList =
                     new ArrayList<CharacteristicsModel>();
 
+            ArrayList<BluetoothGattCharacteristic> BTcharacteristicsArrayList =
+                    new ArrayList<>();
+
             for (BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
                 CharPerServiceArrayList.add(new CharacteristicsModel
-                        (gattCharacteristic.getUuid().toString()));
+                        (gattCharacteristic.getUuid().toString(),
+                                "NULL"));
                 //gattCharacteristic.getDescriptors()
+                BTcharacteristicsArrayList.add(gattCharacteristic);
             }
 
             characteristicsModelArrayList.add(CharPerServiceArrayList);
+            BTcharacteristicsArrayOfArrayList.add(BTcharacteristicsArrayList);
         }
 
         showGattProfilesInExpandableListView();
@@ -164,11 +186,24 @@ public class ConnectedFragment extends Fragment {
 
         servicesExpandableListView = (ExpandableListView)fragment_view.findViewById(R.id.Services_expandableListView);
 
+        @SuppressLint("MissingPermission") LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener =
+            (groupPosition, childPosition) -> {
+                System.out.println("Clicked: " + groupPosition +" | " + childPosition);
+
+                ((MainActivity) requireActivity()).
+                        btGatt.
+                            readCharacteristic(BTcharacteristicsArrayOfArrayList.
+                                get(groupPosition).
+                                    get(childPosition));
+            };
+
         expandableServicesAdapter = new ServicesExpandableListAdapter(this_context,
-                serviceModelArrayList, characteristicsModelArrayList);
+                serviceModelArrayList, characteristicsModelArrayList,
+                readCharacteristicOnClickListener);
 
         servicesExpandableListView.setAdapter(expandableServicesAdapter);
 
+        //todo: unregister in onDestroy
         expandableServicesAdapter.registerDataSetObserver(new DataSetObserver() {
             @Override
             public void onChanged() {
@@ -176,14 +211,6 @@ public class ConnectedFragment extends Fragment {
             }
         });
 
-        servicesExpandableListView.setOnGroupExpandListener(new ExpandableListView.OnGroupExpandListener() {
-            @Override
-            public void onGroupExpand(int groupPosition) {
-                Toast.makeText(this_context,
-                        serviceModelArrayList.get(groupPosition) + " List Expanded.",
-                        Toast.LENGTH_SHORT).show();
-            }
-        });
     }
 
 }

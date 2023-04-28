@@ -1,15 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/linearLayout"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical" >
+    android:layout_height="wrap_content">
 
     <TextView
         android:id="@+id/expanded_characteristic_list_item"
-        android:paddingLeft="?android:attr/expandableListPreferredChildPaddingLeft"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:paddingStart="?android:attr/expandableListPreferredChildPaddingLeft"
         android:paddingTop="10dp"
         android:paddingBottom="10dp"
-        android:layout_width="fill_parent"
+        android:text="char UUID"
+        app:layout_constraintBottom_toTopOf="@+id/read_characteristics_value"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/read_characteristics_value"
+        android:layout_width="82dp"
+        android:layout_height="48dp"
+        android:text="Read"
+        android:textSize="15sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/expanded_characteristic_list_item" />
+
+    <TextView
+        android:id="@+id/characteristic_value"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="char UUID" />
-</LinearLayout>
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:text="value"
+        android:textSize="15sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/read_characteristics_value"
+        app:layout_constraintTop_toBottomOf="@id/expanded_characteristic_list_item" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

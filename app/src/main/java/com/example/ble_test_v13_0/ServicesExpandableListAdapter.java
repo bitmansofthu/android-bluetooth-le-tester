@@ -6,7 +6,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseExpandableListAdapter;
+import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 
@@ -14,6 +16,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     private Context context;
     private ArrayList<ServiceModel> groupArrayList;
     private ArrayList<ArrayList<CharacteristicsModel>> childArrayList;
+    private LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener;
 
     // View lookup cache
     private static class ViewHolderParent {
@@ -23,13 +26,17 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
 
     private static class ViewHolderChild {
         TextView CharUuidExpandedView;
+        Button CharReadExpandedView;
+        TextView CharValueExpandedView;
     }
 
     public ServicesExpandableListAdapter(Context context, ArrayList<ServiceModel> groupArrayList,
-                                         ArrayList<ArrayList<CharacteristicsModel>> childArrayList) {
+                                         ArrayList<ArrayList<CharacteristicsModel>> childArrayList,
+                                         LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener) {
         this.context = context;
         this.groupArrayList = groupArrayList;
         this.childArrayList = childArrayList;
+        this.readCharacteristicOnClickListener = readCharacteristicOnClickListener;
     }
     @Override
     public int getGroupCount() {
@@ -39,7 +46,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     @Override
     public int getChildrenCount(int groupPosition) {
         if (this.childArrayList.get(groupPosition) != null){
-            return this.childArrayList.get(groupPosition).size();
+            return (this.childArrayList.get(groupPosition).size());
         }
         else {
             return 0;
@@ -68,7 +75,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
 
     @Override
     public boolean hasStableIds() {
-        return false; //todo: true?
+        return true; //todo: true?
     }
 
     @Override
@@ -113,36 +120,57 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     @Override
     public View getChildView(int groupPosition, int childPosition, boolean isLastChild,
                              View convertView, ViewGroup parent) {
-        CharacteristicsModel characteristic = (CharacteristicsModel)getChild(groupPosition, childPosition);
 
-        ViewHolderChild viewHolder; // view lookup cache stored in tag
+        // Notice: different implementation compared to getGroupView.
+        // If resources (findViewById) were retrieved in 'convertView == null',
+        // only visible child-items on the display would have been set (not invisible ones).
+        // When invisible ones were scrolled to be visible, still no initialization was done...
+        // So view-holders were not created for all child-items.
+        // groupPosition and childPosition were not set correctly for all items...
+        CharacteristicsModel characteristic =
+                (CharacteristicsModel)getChild(groupPosition, childPosition);
+
+        View rowView;
+
+        ViewHolderChild viewHolderChild = new ViewHolderChild();
 
         if (convertView == null) {
-            viewHolder = new ViewHolderChild();
-
             LayoutInflater layoutInflater = (LayoutInflater) this.context
                     .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            convertView = layoutInflater.inflate(R.layout.list_characteristic_item_view, null);
-
-            viewHolder.CharUuidExpandedView = (TextView) convertView.
-                    findViewById(R.id.expanded_characteristic_list_item);
-
-            convertView.setTag(viewHolder); // Cache the viewHolder object inside the fresh view
+            rowView = layoutInflater.inflate(R.layout.list_characteristic_item_view, null);
         }
         else {
+            rowView = convertView;
             // View is being recycled, retrieve the viewHolder object from tag
-            viewHolder = (ViewHolderChild) convertView.getTag();
+            // viewHolderChild = (ViewHolderChild) rowView.getTag();
         }
+
+        viewHolderChild.CharUuidExpandedView = (TextView) rowView.
+                findViewById(R.id.expanded_characteristic_list_item);
+
+        viewHolderChild.CharReadExpandedView = (Button) rowView.
+                findViewById(R.id.read_characteristics_value);
+        viewHolderChild.CharReadExpandedView.setOnClickListener(
+                v -> {
+                    readCharacteristicOnClickListener.onClick(groupPosition, childPosition);
+                });
+
+        viewHolderChild.CharValueExpandedView = (TextView) rowView.
+                findViewById(R.id.characteristic_value);
+
+        rowView.setTag(viewHolderChild); // Cache the viewHolder object inside the fresh view
 
         // Populate the data from the data object via the viewHolder object
         // into the template view.
-        viewHolder.CharUuidExpandedView.setText(characteristic.getCharacteristicsUUID());
+        viewHolderChild.CharUuidExpandedView.setText(characteristic.getCharacteristicsUUID());
 
-        return convertView;
+        viewHolderChild.CharValueExpandedView.setText(characteristic.getCharacteristicsValue());
+
+        return rowView;
     }
 
     @Override
     public boolean isChildSelectable(int groupPosition, int childPosition) {
-        return false;
+        return true;
     }
 }

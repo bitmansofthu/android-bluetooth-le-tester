@@ -22,14 +22,15 @@
         android:layout_height="match_parent"
         android:layout_marginStart="28dp"
         android:layout_marginTop="104dp"
+        android:clickable="true"
+        android:divider="@android:color/darker_gray"
+        android:dividerHeight="0.5dp"
+        android:indicatorLeft="?android:attr/expandableListPreferredItemIndicatorLeft"
         android:padding="10dp"
         android:scrollbarStyle="outsideInset"
         android:scrollbars="horizontal|vertical"
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        android:indicatorLeft="?android:attr/expandableListPreferredItemIndicatorLeft"
-        android:divider="@android:color/darker_gray"
-        android:dividerHeight="0.5dp" />
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
