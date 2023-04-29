@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.BaseExpandableListAdapter;
 import android.widget.Button;
 import android.widget.ExpandableListAdapter;
 import android.widget.ExpandableListView;
@@ -50,11 +51,10 @@ public class ConnectedFragment extends Fragment {
 
     ArrayList<ServiceModel> serviceModelArrayList = new ArrayList<>();
     ArrayList<ArrayList<CharacteristicsModel>> characteristicsModelArrayList =
-            new ArrayList<ArrayList<CharacteristicsModel>>();
+            new ArrayList<>();
 
     ArrayList<ArrayList<BluetoothGattCharacteristic>> BTcharacteristicsArrayOfArrayList =
             new ArrayList<>();
-
 
     public ConnectedFragment() {
         // Required empty public constructor
@@ -139,11 +139,35 @@ public class ConnectedFragment extends Fragment {
                                                  byte[] value)
     {
         final StringBuilder string = new StringBuilder(value.length);
+        string.append("0x");
         for(byte byteChar : value)
             string.append(String.format("%02X ", byteChar));
-        //new String(value) + "\n" + string.toString())
-        //System.out.println("onCharacteristicRead: " + string);
-        //characteristicsModelArrayList.set()
+
+        for (int groupPos = 0;
+             groupPos < expandableServicesAdapter.getGroupCount();
+             groupPos++)
+        {
+            for (int childPosition = 0;
+                 childPosition < expandableServicesAdapter.getChildrenCount(groupPos);
+                 childPosition++)
+            {
+                if (BTcharacteristicsArrayOfArrayList.get(groupPos).get(childPosition)==
+                        characteristic)
+                {
+                    characteristicsModelArrayList.
+                        get(groupPos).
+                            get(childPosition).setCharacteristicsValue(string.toString());
+
+                    // NOTICE: cast to (BaseExpandableListAdapter)
+                    // for accessing notifyDataSetChanged !!!
+                    ((BaseExpandableListAdapter)
+                            expandableServicesAdapter).notifyDataSetChanged();
+
+                    break;
+                }
+            }
+        }
+
     }
 
     @SuppressLint("MissingPermission")

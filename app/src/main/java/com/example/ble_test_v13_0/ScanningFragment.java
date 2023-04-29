@@ -256,6 +256,8 @@ public class ScanningFragment extends Fragment {
 
             mLeDevices.add(device.getBTDeviceAddress());
             mDevices.add(device);
+
+            // added as last item, so notify the adapter for change of the last item
             devicesAdapter.notifyItemInserted(mDevices.size() - 1 );
         }
     }

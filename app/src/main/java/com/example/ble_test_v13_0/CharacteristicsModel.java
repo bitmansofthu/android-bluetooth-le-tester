@@ -15,5 +15,8 @@ public class CharacteristicsModel {
     public String getCharacteristicsValue() {
         return this.characteristicsValue;
     }
+    public void setCharacteristicsValue(String new_value) {
+        this.characteristicsValue = new_value;
+    }
 
 }
