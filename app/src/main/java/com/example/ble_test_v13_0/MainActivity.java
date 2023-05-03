@@ -18,6 +18,7 @@ import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.content.res.AssetManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.bluetooth.BluetoothAdapter;
@@ -33,7 +34,15 @@ import static android.Manifest.permission.BLUETOOTH_CONNECT;
 import static android.content.ContentValues.TAG;
 import static android.view.View.INVISIBLE;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 // Connection states. Used also as events for triggering the state-change.
@@ -79,6 +88,14 @@ public class MainActivity extends AppCompatActivity {
         return this.mMyBTDevice;
     }
 
+    private HashMap<String, String> reserved_uuids_with_description =
+        new HashMap<String, String>();
+
+    public String reserved_uuid_lookup(String uuid) {
+        String name = reserved_uuids_with_description.get(uuid);
+        return name == null ? "Unknown" : name;
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -122,6 +139,13 @@ public class MainActivity extends AppCompatActivity {
         // Settings for Connecting-dialog
         createProgressSpinnerForConnectingAlertDialog();
 
+        boolean success = false; // todo
+
+        try {
+            success = readBtReservedUUIDsInYamlFiles("service_uuids.yaml");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -141,6 +165,141 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         dialogConnecting.dismiss();
         System.out.println("onDestroy main");
+    }
+
+    // return false : failed, return true : success
+    private boolean readBtReservedUUIDsInYamlFiles(String fileName) throws IOException {
+        //AssetManager assetManager = MainActivity.this.getAssets();
+
+        BufferedReader br = null;
+        try {
+            br = new BufferedReader(
+                    new InputStreamReader(getAssets().open(fileName),
+                            StandardCharsets.UTF_8));
+
+            String line_content;
+            int line_nbr = 1;
+            int list_item = 0;
+            String uuid_key = null;
+            String uuid_16_bit = null;
+            String name_key = null;
+            String service_name = null;
+            String id_key = null;
+            String service_id = null;
+
+            // loop until end of file
+            while ((line_content = br.readLine()) != null) {
+                // process line
+                String[] line_parts;
+
+                line_content = line_content.trim();
+
+                if (line_content.isEmpty()){
+                    continue; // empty line (was including perhaps some spaces)
+                }
+
+                if (line_nbr == 1) {
+                    if (!line_content.contentEquals("uuids:")){
+                        Log.w(TAG, "First line is incorrect. Do not take this YAML-file into usage.");
+
+                        return false;
+                    }
+                    else{
+                        list_item = 0; // continue parsing for checking list item
+                    }
+                } else {
+
+                    if ( list_item == 0 ) {
+                        if (line_content.charAt(0) == '-') {  // list indicator
+
+                            line_content = line_content.substring(1); // remove 'list indicator'
+                            line_parts = line_content.split(":", 2); // limit to two parts
+
+                            // trim for removing all leading and trailing space
+                            uuid_key = line_parts[0].trim();
+
+                            if (!uuid_key.equals("uuid")){
+                                // should always be 'uuid'
+                                Log.w(TAG, "Wrong key in line " + line_nbr  + ". Should be 'uuid'.");
+                                return false;
+                            }
+
+                            uuid_16_bit = line_parts[1].trim();
+                            uuid_16_bit = uuid_16_bit.substring(2); // remove '0x'
+
+                            list_item++;
+                            //Log.w(TAG, "UUID: " + uuid_16_bit);
+                        }
+                        else{
+                            // List indicator '-' not found on row, where it should be located.
+                            // Stop parsing.
+                            Log.w(TAG, "List indicator not found. Do not take this YAML-file into usage.");
+                            return false;
+                        }
+                    }
+                    else if (list_item == 1) {
+                        line_parts = line_content.split(":", 2);
+
+                        // trim for removing all leading and trailing space
+                        name_key = line_parts[0].trim();
+
+                        // That's what we are looking for!
+                        service_name = line_parts[1].trim();
+
+                        if (!name_key.equals("name")){
+                            // should always be 'name'
+                            Log.w(TAG, "Wrong key in line " + line_nbr + ". Should be 'name'.");
+                            return false;
+                        }
+
+                        list_item++;
+
+                        //Log.w(TAG, "service: " + service_name);
+                    }
+                    else if (list_item == 2) {
+                        // trim for removing all leading and trailing space
+                        line_parts = line_content.split(":", 2);
+
+                        id_key = line_parts[0].trim();
+
+                        // e.g. 'org.bluetooth.service.generic_access*
+                        service_id = line_parts[1].trim();
+
+                        if (!id_key.equals("id")){
+                            // should always be 'id'
+                            Log.w(TAG, "Wrong key in line " + line_nbr + ". Should be 'id'.");
+                            return false;
+                        }
+
+                        // uuid128 = (uuid16 << 96) + base
+                        String uuid_128_bit_reserved =
+                                "0000"
+                                   .concat(uuid_16_bit)
+                                   .concat("-0000-1000-8000-00805f9b34fb"); // base
+
+                        reserved_uuids_with_description.put(uuid_128_bit_reserved, service_name);
+
+                        list_item = 0; // next line should start new list-item
+                        //Log.w(TAG, "service_id: " + service_id);
+                    }
+                }
+                line_nbr++;
+            }
+
+        } catch (IOException e) {
+            Log.w(TAG, "Failed to open Yaml-file");
+            throw new RuntimeException(e);
+        } finally {
+            if (br != null) {
+                try {
+                    br.close();
+                } catch (IOException e) {
+                    Log.w(TAG, "Failed to close Yaml-file");
+                }
+            }
+        }
+
+        return true;
     }
 
     // Start timer for monitoring the establishment of connection.
@@ -421,12 +580,14 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     dialogConnecting.hide();
                     Toast.makeText(MainActivity.this, "Failed to connect to the remote device!", Toast.LENGTH_SHORT).show();
+
+                    if (btGatt != null){
+                        // Close gatt-interface (if there is any interface available anymore). BT-interface might be stuck.
+                        btGatt.close();
+                    }
+
                 });
 
-                if (btGatt != null){
-                    // Close gatt-interface (if there is any interface available anymore). BT-interface might be stuck.
-                    btGatt.close();
-                }
             }
         }
         else if (stateChange == BT_CONNECTION_STATE.DISCONNECTED){

@@ -182,7 +182,10 @@ public class ConnectedFragment extends Fragment {
             List<BluetoothGattCharacteristic> gattCharacteristics =
                     gattService.getCharacteristics();
 
-            serviceModelArrayList.add(new ServiceModel("SERVICE", gattService.getUuid().toString()));
+            String service_name = ((MainActivity) requireActivity()).
+                    reserved_uuid_lookup(gattService.getUuid().toString());
+
+            serviceModelArrayList.add(new ServiceModel(service_name, gattService.getUuid().toString()));
 
             ArrayList<CharacteristicsModel> CharPerServiceArrayList =
                     new ArrayList<CharacteristicsModel>();
