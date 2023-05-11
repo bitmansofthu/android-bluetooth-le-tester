@@ -20,6 +20,7 @@ import android.widget.ExpandableListView;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -178,7 +179,7 @@ public class ConnectedFragment extends Fragment {
                     gattService.getCharacteristics();
 
             String service_name = ((MainActivity) requireActivity()).
-                    reserved_uuid_lookup(gattService.getUuid().toString());
+                    reserved_uuid_lookup(gattService.getUuid().toString().toLowerCase(Locale.ROOT));
 
             serviceModelArrayList.add(new ServiceModel(service_name, gattService.getUuid().toString()));
 

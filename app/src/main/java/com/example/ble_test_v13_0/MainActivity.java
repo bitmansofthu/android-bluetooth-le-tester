@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Objects;
 
 // Connection states. Used also as events for triggering the state-change.
@@ -138,6 +139,12 @@ public class MainActivity extends AppCompatActivity {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        try {
+            success = readBtReservedUUIDsInYamlFiles("characteristic_uuids.yaml");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     @Override
@@ -167,8 +174,8 @@ public class MainActivity extends AppCompatActivity {
     // specific files:
     //uuids:
     // - uuid: 0x1800
-    //  name: Generic Access
-    //    id: org.bluetooth.service.generic_access
+    //   name: Generic Access
+    //   id: org.bluetooth.service.generic_access
     // - uuid: 0x1801
     // ...
     private boolean readBtReservedUUIDsInYamlFiles(String fileName) throws IOException {
@@ -186,7 +193,7 @@ public class MainActivity extends AppCompatActivity {
             String uuid_key = null;
             String uuid_16_bit = null;
             String name_key = null;
-            String service_name = null;
+            String descriptive_name = null;
             String id_key = null;
             String service_id = null;
 
@@ -230,6 +237,8 @@ public class MainActivity extends AppCompatActivity {
                             uuid_16_bit = line_parts[1].trim();
                             uuid_16_bit = uuid_16_bit.substring(2); // remove '0x'
 
+                            uuid_16_bit = uuid_16_bit.toLowerCase(Locale.ROOT);
+
                             list_item++;
                             //Log.w(TAG, "UUID: " + uuid_16_bit);
                         }
@@ -247,7 +256,7 @@ public class MainActivity extends AppCompatActivity {
                         name_key = line_parts[0].trim();
 
                         // That's what we are looking for!
-                        service_name = line_parts[1].trim();
+                        descriptive_name = line_parts[1].trim();
 
                         if (!name_key.equals("name")){
                             // should always be 'name'
@@ -257,7 +266,7 @@ public class MainActivity extends AppCompatActivity {
 
                         list_item++;
 
-                        //Log.w(TAG, "service: " + service_name);
+                        //Log.w(TAG, "service: " + descriptive_name);
                     }
                     else if (list_item == 2) {
                         // trim for removing all leading and trailing space
@@ -274,13 +283,17 @@ public class MainActivity extends AppCompatActivity {
                             return false;
                         }
 
-                        // uuid128 = (uuid16 << 96) + base
+                        // Convert short 16-bit UUID to full 128-bit UUID with formula:
+                        // uuid128 = (uuid16 << 96) + base_for_reserved_address,
+                        // where base = 0x00 00 10 00 80 00 00 80 5f 9b 34 fb
+                        // (contains 12 octets = 12 * 8 bit = 96 bits)
+                        // MSB 16 bits (bits 128...112) is filled by 0x0000
                         String uuid_128_bit_reserved =
-                                "0000"
-                                   .concat(uuid_16_bit)
-                                   .concat("-0000-1000-8000-00805f9b34fb"); // base
+                                "0000" // MSB
+                                .concat(uuid_16_bit) // short 16-bit address
+                                .concat("-0000-1000-8000-00805f9b34fb"); // base
 
-                        reserved_uuids_with_description.put(uuid_128_bit_reserved, service_name);
+                        reserved_uuids_with_description.put(uuid_128_bit_reserved, descriptive_name);
 
                         list_item = 0; // next line should start new list-item
                         //Log.w(TAG, "service_id: " + service_id);
