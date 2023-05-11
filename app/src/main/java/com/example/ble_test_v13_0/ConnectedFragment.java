@@ -1,7 +1,5 @@
 package com.example.ble_test_v13_0;
 
-import static android.content.ContentValues.TAG;
-
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
@@ -11,9 +9,7 @@ import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.RecyclerView;
 
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,11 +17,9 @@ import android.widget.BaseExpandableListAdapter;
 import android.widget.Button;
 import android.widget.ExpandableListAdapter;
 import android.widget.ExpandableListView;
-import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -56,7 +50,7 @@ public class ConnectedFragment extends Fragment {
     ArrayList<ArrayList<CharacteristicsModel>> characteristicsModelArrayList =
             new ArrayList<>();
 
-    ArrayList<ArrayList<BluetoothGattCharacteristic>> BTcharacteristicsArrayOfArrayList =
+    ArrayList<ArrayList<BluetoothGattCharacteristic>> BtCharacteristicsArrayOfArrayList =
             new ArrayList<>();
 
     public ConnectedFragment() {
@@ -108,26 +102,24 @@ public class ConnectedFragment extends Fragment {
     // Any view setup should occur here.  E.g., view lookups and attaching view listeners.
     @Override
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState){
-        disconnectButton = (Button) fragment_view.findViewById(R.id.disconnect_button);
-        disconnectButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                if (((MainActivity) requireActivity()).mConnectionState ==
-                        BT_CONNECTION_STATE.CONNECTED) {
+        disconnectButton = fragment_view.findViewById(R.id.disconnect_button);
+        disconnectButton.setOnClickListener(v -> {
+            if (((MainActivity) requireActivity()).mConnectionState ==
+                    BT_CONNECTION_STATE.CONNECTED) {
 
-                    // DISCONNECTING-event is generated only, when normal local disconnect is done.
-                    // E.g disconnect from remote device is detected by BT gatt-callback,
-                    // causing DISCONNECTED-event to be generated.
-                    ((MainActivity) requireActivity()).
-                            HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTING);
-                }
-                //else
-                // What about, if the state != CONNECTED ?
-                // Fragment should be closed somehow.
-                //I did some test where I powered off the remote BLE-device.
-                // -> onConnectionStateChange-event with newState STATE_DISCONNECTED
-                // -> causes ConnectedFragment to be closed from FragmentTransaction MainActivity.
-                // OK!
+                // DISCONNECTING-event is generated only, when normal local disconnect is done.
+                // E.g disconnect from remote device is detected by BT gatt-callback,
+                // causing DISCONNECTED-event to be generated.
+                ((MainActivity) requireActivity()).
+                        HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTING);
             }
+            //else
+            // What about, if the state != CONNECTED ?
+            // Fragment should be closed somehow.
+            //I did some test where I powered off the remote BLE-device.
+            // -> onConnectionStateChange-event with newState STATE_DISCONNECTED
+            // -> causes ConnectedFragment to be closed from FragmentTransaction MainActivity.
+            // OK!
         });
 
         discoverGattServices();
@@ -154,7 +146,7 @@ public class ConnectedFragment extends Fragment {
                  childPosition < expandableServicesAdapter.getChildrenCount(groupPos);
                  childPosition++)
             {
-                if (BTcharacteristicsArrayOfArrayList.get(groupPos).get(childPosition)==
+                if (BtCharacteristicsArrayOfArrayList.get(groupPos).get(childPosition)==
                         characteristic)
                 {
                     characteristicsModelArrayList.
@@ -191,9 +183,9 @@ public class ConnectedFragment extends Fragment {
             serviceModelArrayList.add(new ServiceModel(service_name, gattService.getUuid().toString()));
 
             ArrayList<CharacteristicsModel> CharPerServiceArrayList =
-                    new ArrayList<CharacteristicsModel>();
+                    new ArrayList<>();
 
-            ArrayList<BluetoothGattCharacteristic> BTcharacteristicsArrayList =
+            ArrayList<BluetoothGattCharacteristic> BtCharacteristicsArrayList =
                     new ArrayList<>();
 
             for (BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
@@ -201,11 +193,11 @@ public class ConnectedFragment extends Fragment {
                         (gattCharacteristic.getUuid().toString(),
                                 "NULL"));
                 //gattCharacteristic.getDescriptors()
-                BTcharacteristicsArrayList.add(gattCharacteristic);
+                BtCharacteristicsArrayList.add(gattCharacteristic);
             }
 
             characteristicsModelArrayList.add(CharPerServiceArrayList);
-            BTcharacteristicsArrayOfArrayList.add(BTcharacteristicsArrayList);
+            BtCharacteristicsArrayOfArrayList.add(BtCharacteristicsArrayList);
         }
 
         showGattProfilesInExpandableListView();
@@ -221,7 +213,7 @@ public class ConnectedFragment extends Fragment {
 
             ((MainActivity) requireActivity()).
                     btGatt.
-                    readCharacteristic(BTcharacteristicsArrayOfArrayList.
+                    readCharacteristic(BtCharacteristicsArrayOfArrayList.
                             get(groupPosition).
                             get(childPosition));
         };
@@ -229,7 +221,7 @@ public class ConnectedFragment extends Fragment {
     public void showGattProfilesInExpandableListView(){
         // Show services in Expandable type of List view (characteristics expanded)
 
-        servicesExpandableListView = (ExpandableListView)fragment_view.findViewById(R.id.Services_expandableListView);
+        servicesExpandableListView = fragment_view.findViewById(R.id.Services_expandableListView);
 
         // Create the adapter for ExpandableListView by giving desired data-set
         // (service list and characteristic list), and register OnClick-listener

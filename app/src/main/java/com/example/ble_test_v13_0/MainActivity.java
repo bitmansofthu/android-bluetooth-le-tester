@@ -4,7 +4,6 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
@@ -12,14 +11,11 @@ import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
-import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
-import android.content.res.AssetManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -33,17 +29,12 @@ import static android.Manifest.permission.BLUETOOTH_SCAN;
 import static android.Manifest.permission.BLUETOOTH_CONNECT;
 import static android.bluetooth.BluetoothDevice.TRANSPORT_LE;
 import static android.content.ContentValues.TAG;
-import static android.view.View.INVISIBLE;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 // Connection states. Used also as events for triggering the state-change.
@@ -90,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private HashMap<String, String> reserved_uuids_with_description =
-        new HashMap<String, String>();
+            new HashMap<>();
 
     public String reserved_uuid_lookup(String uuid) {
         String name = reserved_uuids_with_description.get(uuid);
@@ -341,9 +332,9 @@ public class MainActivity extends AppCompatActivity {
         dialogConnecting = builderConnecting.create();
     }
 
-    private void showScanConnectRuntimePermissionMessage(String message, DialogInterface.OnClickListener okListener) {
+    private void showScanConnectRuntimePermissionMessage(DialogInterface.OnClickListener okListener) {
         new AlertDialog.Builder(MainActivity.this)
-                .setMessage(message)
+                .setMessage("You will next need to allow permissions for finding Bluetooth Low Energy devices from neighbourhood, and connecting to the selected device. Seriously, if you now deny permissions, you will need to uninstall and install BLE tester application again to proceed for allowing permissions next time, and start to use the application. BLE tester is totally useless application without desired runtime permissions, and will stop running...")
                 .setPositiveButton("I understand", okListener)
                 .create()
                 .show();
@@ -388,21 +379,10 @@ public class MainActivity extends AppCompatActivity {
         else if (shouldShowRequestPermissionRationale(BLUETOOTH_SCAN) &&
                  shouldShowRequestPermissionRationale(BLUETOOTH_CONNECT)) {
 
-            showScanConnectRuntimePermissionMessage("You will next need to allow permissions for finding " +
-                            "Bluetooth Low Energy devices from neighbourhood, and connecting to the selected device. " +
-                            "Seriously, if you now deny permissions, " +
-                            "you will need to uninstall and install BLE tester application again to proceed " +
-                            "for allowing permissions next time, and start to use the application. " +
-                            "BLE tester is totally useless application without desired runtime permissions, " +
-                            "and will stop running..." ,
-                new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        ActivityCompat.requestPermissions(MainActivity.this,
-                                new String[]{ permissions[0], permissions[1] },
-                                BT_SCAN_CONNECT_PERMISSION_CODE);
-                    }
-                });
+            showScanConnectRuntimePermissionMessage(
+                    (dialog, which) -> ActivityCompat.requestPermissions(MainActivity.this,
+                            new String[]{ permissions[0], permissions[1] },
+                            BT_SCAN_CONNECT_PERMISSION_CODE));
         }
         else{
             ActivityCompat.requestPermissions(MainActivity.this,
@@ -496,10 +476,8 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                runOnUiThread(() -> {
-                    ((ConnectedFragment) Objects.requireNonNull
-                            (fm.findFragmentByTag("CONNECTION"))).GattServicesDiscovered();
-                });
+                runOnUiThread(() -> ((ConnectedFragment) Objects.requireNonNull
+                        (fm.findFragmentByTag("CONNECTION"))).GattServicesDiscovered());
             } else {
                 Log.w(TAG, "onServicesDiscovered status: " + status);
             }
@@ -514,12 +492,10 @@ public class MainActivity extends AppCompatActivity {
         {
             if (status == BluetoothGatt.GATT_SUCCESS) {
 
-                runOnUiThread(() -> {
-                    ((ConnectedFragment) Objects.requireNonNull
-                            (fm.findFragmentByTag("CONNECTION"))).
-                            GattCharacteristicsValueReceived(characteristic,
-                                    characteristic.getValue());
-                });
+                runOnUiThread(() -> ((ConnectedFragment) Objects.requireNonNull
+                        (fm.findFragmentByTag("CONNECTION"))).
+                        GattCharacteristicsValueReceived(characteristic,
+                                characteristic.getValue()));
             } else {
                 Log.w(TAG, "onCharacteristicRead status: " + status);
             }
@@ -536,11 +512,9 @@ public class MainActivity extends AppCompatActivity {
         {
             if (status == BluetoothGatt.GATT_SUCCESS) {
 
-                runOnUiThread(() -> {
-                ((ConnectedFragment) Objects.requireNonNull
+                runOnUiThread(() -> ((ConnectedFragment) Objects.requireNonNull
                         (fm.findFragmentByTag("CONNECTION"))).
-                        GattCharacteristicsValueReceived(characteristic, value);
-            });
+                        GattCharacteristicsValueReceived(characteristic, value));
             } else {
                 Log.w(TAG, "onCharacteristicRead status: " + status);
             }
@@ -570,8 +544,8 @@ public class MainActivity extends AppCompatActivity {
                 // although we probably are also now executing UI-thread
                 // (trigger came also from UI from ScanningFragment).
                 runOnUiThread(() -> {
-                    dialogConnecting.setTitle("Connecting to \'\'" +
-                            getMyBTDevice().getName() + "\'\' ...");
+                    dialogConnecting.setTitle("Connecting to '" +
+                            getMyBTDevice().getName() + "' ...");
                     dialogConnecting.show();
 
                     // start Connecting-timer to elapse for avoiding to connect for ages...
@@ -581,14 +555,10 @@ public class MainActivity extends AppCompatActivity {
                 mConnectionState = BT_CONNECTION_STATE.CONNECTING;
 
                 // Start connecting to the remote device.
-/*                btGatt = getMyBTDevice().connectGatt(MainActivity.this,
-                        false, gattCallback);*/
 
                 btGatt = getMyBTDevice().connectGatt(MainActivity.this,
                         false, gattCallback,TRANSPORT_LE);
 
-                //refreshDeviceCache(btGatt);
-                //btGatt.requestMtu(23);
             }
         }
         else if (stateChange == BT_CONNECTION_STATE.CONNECTED){

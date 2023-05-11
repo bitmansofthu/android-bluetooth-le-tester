@@ -63,8 +63,8 @@ public class ScanningFragment extends Fragment {
 
     private RecyclerView.Adapter devicesAdapter;
 
-    ArrayList<BluetoothDevice> mLeDevices = new ArrayList<BluetoothDevice>(); //TODO: del !!
-    ArrayList<DeviceModel> mDevices = new ArrayList<DeviceModel>();
+    ArrayList<BluetoothDevice> mLeDevices = new ArrayList<>();
+    ArrayList<DeviceModel> mDevices = new ArrayList<>();
 
     public ScanningFragment() {
         // Required empty public constructor
@@ -143,7 +143,7 @@ public class ScanningFragment extends Fragment {
     }
 
     // This method is called when the fragment is no longer connected to the Activity
-    // Any references saved in onAttach should be nulled out here to prevent memory leaks.
+    // Any references saved in onAttach should be null out here to prevent memory leaks.
     @Override
     public void onDetach() {
         super.onDetach();
@@ -163,11 +163,11 @@ public class ScanningFragment extends Fragment {
                 @Override
                 public void onScanResult(int callbackType, ScanResult result) {
                     super.onScanResult(callbackType, result);
-
                     addDevice(result); // add device-details to RecyclerView List adapter
 
                     BluetoothDevice device = result.getDevice();
                     int signal = result.getRssi();
+
                     System.out.println("BT address: " + device + " | name: " +
                             device.getName() +
                             " | rssi: " + signal); //todo
@@ -262,7 +262,7 @@ public class ScanningFragment extends Fragment {
         }
     }
 
-    public class BTDevicesRecyclerViewAdapter extends RecyclerView.Adapter<BTDevicesRecyclerViewAdapter.ViewHolder> {
+    public static class BTDevicesRecyclerViewAdapter extends RecyclerView.Adapter<BTDevicesRecyclerViewAdapter.ViewHolder> {
 
         private ArrayList<DeviceModel> DeviceModelArrayList;
         public Context context;
@@ -305,7 +305,7 @@ public class ScanningFragment extends Fragment {
 
                 // Define click listener for the ViewHolder's View
                 view.setOnClickListener(this);
-                view.setOnLongClickListener((View.OnLongClickListener) this);
+                view.setOnLongClickListener(this);
 
                 deviceAddress = view.findViewById(R.id.device_mac_address);
                 deviceName = view.findViewById(R.id.device_name);

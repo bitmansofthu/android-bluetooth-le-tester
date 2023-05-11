@@ -4,9 +4,9 @@ import android.bluetooth.BluetoothDevice;
 
 public class DeviceModel {
 
-    private BluetoothDevice address; // MAC-address
-    private int signal;
-    private String name;
+    private final BluetoothDevice address; // MAC-address
+    private int signal; // RSSI
+    private final String name;
 
     public DeviceModel(BluetoothDevice address, String name, int signal) {
         this.address = address;
@@ -23,4 +23,6 @@ public class DeviceModel {
     public int getSignalLevel() {
         return this.signal;
     }
+    public void setSignalLevel(int signal) { this.signal = signal; }
+
 }
