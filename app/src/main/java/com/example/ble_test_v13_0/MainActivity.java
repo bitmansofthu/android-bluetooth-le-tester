@@ -31,6 +31,7 @@ import android.widget.Toast;
 
 import static android.Manifest.permission.BLUETOOTH_SCAN;
 import static android.Manifest.permission.BLUETOOTH_CONNECT;
+import static android.bluetooth.BluetoothDevice.TRANSPORT_LE;
 import static android.content.ContentValues.TAG;
 import static android.view.View.INVISIBLE;
 
@@ -167,7 +168,18 @@ public class MainActivity extends AppCompatActivity {
         System.out.println("onDestroy main");
     }
 
+    // YAML formatted file-Parser.
     // return false : failed, return true : success
+    // See 'https://www.bluetooth.com/specifications/assigned-numbers/' and
+    // 'Assigned Numbers Repository (YAML)'.
+    // Notice: this parser decodes only simple list-type, so exactly the format included in these
+    // specific files:
+    //uuids:
+    // - uuid: 0x1800
+    //  name: Generic Access
+    //    id: org.bluetooth.service.generic_access
+    // - uuid: 0x1801
+    // ...
     private boolean readBtReservedUUIDsInYamlFiles(String fileName) throws IOException {
         //AssetManager assetManager = MainActivity.this.getAssets();
 
@@ -461,6 +473,27 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
+        public void onPhyUpdate (BluetoothGatt gatt,
+                                 int txPhy,
+                                 int rxPhy,
+                                 int status){
+            Log.w(TAG, "onPhyUpdate: txPhy: " + txPhy +
+                            " rxPhy: " + rxPhy +
+                            " status: " + status);
+        }
+
+        @Override
+        public void onMtuChanged (BluetoothGatt gatt,
+                                  int mtu,
+                                  int status){
+
+            //btGatt.requestMtu(5*23);
+
+            Log.w(TAG, "onMtuChanged: status: " + status +
+                                    " | mtu: " + mtu);
+        }
+
+        @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 runOnUiThread(() -> {
@@ -472,6 +505,27 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        // This method was deprecated in API level 33.
+        // Will be here when executing this SW in Android 12
+        @Override
+        public void onCharacteristicRead (BluetoothGatt gatt,
+                                          BluetoothGattCharacteristic characteristic,
+                                          int status)
+        {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+
+                runOnUiThread(() -> {
+                    ((ConnectedFragment) Objects.requireNonNull
+                            (fm.findFragmentByTag("CONNECTION"))).
+                            GattCharacteristicsValueReceived(characteristic,
+                                    characteristic.getValue());
+                });
+            } else {
+                Log.w(TAG, "onCharacteristicRead status: " + status);
+            }
+        }
+
+        // This method is for API level >= 33.
         @Override
         public void onCharacteristicRead(
                 BluetoothGatt gatt,
@@ -527,8 +581,14 @@ public class MainActivity extends AppCompatActivity {
                 mConnectionState = BT_CONNECTION_STATE.CONNECTING;
 
                 // Start connecting to the remote device.
+/*                btGatt = getMyBTDevice().connectGatt(MainActivity.this,
+                        false, gattCallback);*/
+
                 btGatt = getMyBTDevice().connectGatt(MainActivity.this,
-                        false, gattCallback);
+                        false, gattCallback,TRANSPORT_LE);
+
+                //refreshDeviceCache(btGatt);
+                //btGatt.requestMtu(23);
             }
         }
         else if (stateChange == BT_CONNECTION_STATE.CONNECTED){

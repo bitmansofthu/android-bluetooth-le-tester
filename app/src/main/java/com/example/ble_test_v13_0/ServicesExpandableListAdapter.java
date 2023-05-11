@@ -101,7 +101,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
 
             viewHolder.ServiceUuidListTextView = (TextView) convertView.
                                                     findViewById(R.id.service_group_id);
-            viewHolder.ServiceUuidListTextView.setTypeface(null, Typeface.BOLD);
+            viewHolder.ServiceUuidListTextView.setTypeface(null, Typeface.BOLD_ITALIC);
 
             convertView.setTag(viewHolder); // Cache the viewHolder object inside the fresh view
         }
@@ -145,11 +145,16 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
             // viewHolderChild = (ViewHolderChild) rowView.getTag();
         }
 
+        //set light blue
+        rowView.setBackgroundColor(0xFFD0FDF3);
+
         viewHolderChild.CharUuidExpandedView = (TextView) rowView.
                 findViewById(R.id.expanded_characteristic_list_item);
+        viewHolderChild.CharUuidExpandedView.setTypeface(null, Typeface.ITALIC);
 
         viewHolderChild.CharReadExpandedView = (Button) rowView.
                 findViewById(R.id.read_characteristics_value);
+
         viewHolderChild.CharReadExpandedView.setOnClickListener(
                 v -> {
                     readCharacteristicOnClickListener.onClick(groupPosition, childPosition);

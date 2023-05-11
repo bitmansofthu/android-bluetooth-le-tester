@@ -1,5 +1,7 @@
 package com.example.ble_test_v13_0;
 
+import static android.content.ContentValues.TAG;
+
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
@@ -11,6 +13,7 @@ import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -208,22 +211,32 @@ public class ConnectedFragment extends Fragment {
         showGattProfilesInExpandableListView();
     }
 
+    // onClick-handler for triggering the read.
+    // When some characteristics-item is clicked on ServicesExpandableList, content of the
+    // attribute will be read from the remote device.
+    @SuppressLint("MissingPermission")
+    LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener =
+        (groupPosition, childPosition) -> {
+            //todo remove: System.out.println("Clicked: " + groupPosition +" | " + childPosition);
+
+            ((MainActivity) requireActivity()).
+                    btGatt.
+                    readCharacteristic(BTcharacteristicsArrayOfArrayList.
+                            get(groupPosition).
+                            get(childPosition));
+        };
+
     public void showGattProfilesInExpandableListView(){
         // Show services in Expandable type of List view (characteristics expanded)
 
         servicesExpandableListView = (ExpandableListView)fragment_view.findViewById(R.id.Services_expandableListView);
 
-        @SuppressLint("MissingPermission") LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener =
-            (groupPosition, childPosition) -> {
-                System.out.println("Clicked: " + groupPosition +" | " + childPosition);
-
-                ((MainActivity) requireActivity()).
-                        btGatt.
-                            readCharacteristic(BTcharacteristicsArrayOfArrayList.
-                                get(groupPosition).
-                                    get(childPosition));
-            };
-
+        // Create the adapter for ExpandableListView by giving desired data-set
+        // (service list and characteristic list), and register OnClick-listener
+        // for reading GATT/ATT characteristics attribute values.
+        // Listener is published via new interface LVChildItemReadCharacteristicOnClickListener,
+        // for avoiding to keep listener inside the adapter (otherwise hard to search from the code
+        // where on earth the listener is located...)
         expandableServicesAdapter = new ServicesExpandableListAdapter(this_context,
                 serviceModelArrayList, characteristicsModelArrayList,
                 readCharacteristicOnClickListener);
@@ -237,7 +250,6 @@ public class ConnectedFragment extends Fragment {
                 super.onChanged();
             }
         });
-
     }
 
 }

@@ -9,22 +9,24 @@
     <Button
         android:id="@+id/disconnect_button"
         android:layout_width="wrap_content"
-        android:layout_height="48dp"
-        android:layout_marginStart="40dp"
-        android:layout_marginBottom="40dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
         android:text="@string/disconnect"
         app:layout_constraintBottom_toTopOf="@id/Services_expandableListView"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.071" />
 
     <android.widget.ExpandableListView
         android:id="@+id/Services_expandableListView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginStart="28dp"
-        android:layout_marginTop="104dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="40dp"
+        android:childDivider="@color/purple_700"
         android:clickable="true"
         android:divider="@android:color/darker_gray"
-        android:dividerHeight="0.5dp"
+        android:dividerHeight="1.5dp"
         android:indicatorLeft="?android:attr/expandableListPreferredItemIndicatorLeft"
         android:padding="10dp"
         android:scrollbarStyle="outsideInset"
