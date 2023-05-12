@@ -1,31 +1,32 @@
 package com.example.ble_test_v13_0;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
-import android.graphics.Typeface;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseExpandableListAdapter;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.util.ArrayList;
 
 public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
-    private Context context;
-    private ArrayList<ServiceModel> groupArrayList;
-    private ArrayList<ArrayList<CharacteristicsModel>> childArrayList;
-    private LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener;
+    private final Context context;
+    private final ArrayList<ServiceModel> groupArrayList;
+    private final ArrayList<ArrayList<CharacteristicsModel>> childArrayList;
+    private final LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener;
 
-    // View lookup cache
+    // View lookup cache (view holders for parents and corresponding children for each parent)
     private static class ViewHolderParent {
         TextView ServiceNameTextListView;
         TextView ServiceUuidListTextView;
     }
 
+    // expandable items (children)
     private static class ViewHolderChild {
         TextView CharUuidExpandedView;
+        TextView CharNameExpandedView;
         Button CharReadExpandedView;
         TextView CharValueExpandedView;
     }
@@ -78,6 +79,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
         return true; //todo: true?
     }
 
+    @SuppressLint("InflateParams")
     @Override
     public View getGroupView(int groupPosition, boolean isExpanded,
                              View convertView, ViewGroup parent) {
@@ -95,13 +97,11 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
 
             convertView = layoutInflater.inflate(R.layout.list_service_item_view, null);
 
-            viewHolder.ServiceNameTextListView = (TextView) convertView.
+            viewHolder.ServiceNameTextListView = convertView.
                                                     findViewById(R.id.service_group_name);
-            viewHolder.ServiceNameTextListView.setTypeface(null, Typeface.BOLD);
 
-            viewHolder.ServiceUuidListTextView = (TextView) convertView.
+            viewHolder.ServiceUuidListTextView = convertView.
                                                     findViewById(R.id.service_group_id);
-            viewHolder.ServiceUuidListTextView.setTypeface(null, Typeface.BOLD_ITALIC);
 
             convertView.setTag(viewHolder); // Cache the viewHolder object inside the fresh view
         }
@@ -117,6 +117,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
         return convertView;
     }
 
+    @SuppressLint("InflateParams")
     @Override
     public View getChildView(int groupPosition, int childPosition, boolean isLastChild,
                              View convertView, ViewGroup parent) {
@@ -145,22 +146,19 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
             // viewHolderChild = (ViewHolderChild) rowView.getTag();
         }
 
-        //set light blue
-        rowView.setBackgroundColor(0xFFD0FDF3);
+        viewHolderChild.CharUuidExpandedView = rowView.
+                findViewById(R.id.expanded_characteristic_uuid);
 
-        viewHolderChild.CharUuidExpandedView = (TextView) rowView.
-                findViewById(R.id.expanded_characteristic_list_item);
-        viewHolderChild.CharUuidExpandedView.setTypeface(null, Typeface.ITALIC);
+        viewHolderChild.CharNameExpandedView = rowView.
+                findViewById(R.id.expanded_characteristic_name);
 
-        viewHolderChild.CharReadExpandedView = (Button) rowView.
+        viewHolderChild.CharReadExpandedView = rowView.
                 findViewById(R.id.read_characteristics_value);
 
         viewHolderChild.CharReadExpandedView.setOnClickListener(
-                v -> {
-                    readCharacteristicOnClickListener.onClick(groupPosition, childPosition);
-                });
+                v -> readCharacteristicOnClickListener.onClick(groupPosition, childPosition));
 
-        viewHolderChild.CharValueExpandedView = (TextView) rowView.
+        viewHolderChild.CharValueExpandedView = rowView.
                 findViewById(R.id.characteristic_value);
 
         rowView.setTag(viewHolderChild); // Cache the viewHolder object inside the fresh view
@@ -168,6 +166,8 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
         // Populate the data from the data object via the viewHolder object
         // into the template view.
         viewHolderChild.CharUuidExpandedView.setText(characteristic.getCharacteristicsUUID());
+
+        viewHolderChild.CharNameExpandedView.setText(characteristic.getCharacteristicsName());
 
         viewHolderChild.CharValueExpandedView.setText(characteristic.getCharacteristicsValue());
 

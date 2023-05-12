@@ -178,10 +178,12 @@ public class ConnectedFragment extends Fragment {
             List<BluetoothGattCharacteristic> gattCharacteristics =
                     gattService.getCharacteristics();
 
-            String service_name = ((MainActivity) requireActivity()).
+            String serviceName = ((MainActivity) requireActivity()).
                     reserved_uuid_lookup(gattService.getUuid().toString().toLowerCase(Locale.ROOT));
 
-            serviceModelArrayList.add(new ServiceModel(service_name, gattService.getUuid().toString()));
+            String serviceUuid = gattService.getUuid().toString();
+
+            serviceModelArrayList.add(new ServiceModel(serviceName, serviceUuid ));
 
             ArrayList<CharacteristicsModel> CharPerServiceArrayList =
                     new ArrayList<>();
@@ -190,9 +192,15 @@ public class ConnectedFragment extends Fragment {
                     new ArrayList<>();
 
             for (BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
+
+                String characteristicsName = ((MainActivity) requireActivity()).
+                        reserved_uuid_lookup(gattCharacteristic.getUuid().toString().toLowerCase(Locale.ROOT));
+
+                String characteristicsUuid = gattCharacteristic.getUuid().toString();
+
                 CharPerServiceArrayList.add(new CharacteristicsModel
-                        (gattCharacteristic.getUuid().toString(),
-                                "NULL"));
+                        (characteristicsUuid, characteristicsName, "NULL"));
+
                 //gattCharacteristic.getDescriptors()
                 BtCharacteristicsArrayList.add(gattCharacteristic);
             }

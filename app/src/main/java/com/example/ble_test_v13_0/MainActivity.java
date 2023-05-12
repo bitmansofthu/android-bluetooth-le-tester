@@ -81,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
         return this.mMyBTDevice;
     }
 
-    private HashMap<String, String> reserved_uuids_with_description =
+    private final HashMap<String, String> reserved_uuids_with_description =
             new HashMap<>();
 
     public String reserved_uuid_lookup(String uuid) {
@@ -190,11 +190,11 @@ public class MainActivity extends AppCompatActivity {
             String line_content;
             int line_nbr = 1;
             int list_item = 0;
-            String uuid_key = null;
+            String uuid_key;
             String uuid_16_bit = null;
-            String name_key = null;
+            String name_key;
             String descriptive_name = null;
-            String id_key = null;
+            String id_key;
             String service_id = null;
 
             // loop until end of file

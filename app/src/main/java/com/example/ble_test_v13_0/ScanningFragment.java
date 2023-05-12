@@ -349,8 +349,6 @@ public class ScanningFragment extends Fragment {
 
                 holder.getDeviceName().
                         setText(deviceItem.getBTDeviceName());
-                //set light blue
-                holder.itemView.setBackgroundColor(0xFFD0FDF3);
             }
         }
 
