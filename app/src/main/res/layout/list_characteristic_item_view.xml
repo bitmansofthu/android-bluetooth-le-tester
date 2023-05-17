@@ -11,10 +11,11 @@
         android:id="@+id/expanded_characteristic_name"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:paddingStart="?android:attr/expandableListPreferredItemPaddingLeft"
         android:text="Unknown name"
         android:textColor="@android:color/black"
         android:textSize="16sp"
-        android:paddingStart="?android:attr/expandableListPreferredItemPaddingLeft"
+        android:textStyle="bold"
         app:layout_constraintBottom_toTopOf="@+id/expanded_characteristic_uuid"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -25,43 +26,85 @@
         android:id="@+id/expanded_characteristic_uuid"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:paddingStart="?android:attr/expandableListPreferredItemPaddingLeft"
         android:text="Unknown UUID"
         android:textColor="@android:color/black"
         android:textSize="16sp"
         android:textStyle="italic"
-        android:paddingStart="?android:attr/expandableListPreferredItemPaddingLeft"
-        app:layout_constraintBottom_toTopOf="@+id/read_characteristics_value"
+        app:layout_constraintBottom_toTopOf="@+id/radioGroupReadWriteNotify"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/expanded_characteristic_name"
         tools:ignore="RtlSymmetry" />
 
-    <Button
-        android:id="@+id/read_characteristics_value"
+    <RadioGroup
+        android:id="@+id/radioGroupReadWriteNotify"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="48dp"
         android:layout_marginTop="4dp"
-        android:paddingTop="5dp"
-        android:paddingBottom="5dp"
-        android:text="Read"
-        android:textSize="15sp"
+        android:orientation="horizontal"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/expanded_characteristic_uuid" />
+        app:layout_constraintTop_toBottomOf="@+id/expanded_characteristic_uuid">
 
-    <TextView
+        <RadioButton
+            android:id="@+id/radioButtonRead"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="ReadAccess" />
+
+        <RadioButton
+            android:id="@+id/radioButtonWrite"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="false"
+            android:text="WriteAccess" />
+
+        <RadioButton
+            android:id="@+id/radioButtonNotification"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="false"
+            android:text="NotifyAccess" />
+    </RadioGroup>
+
+    <EditText
         android:id="@+id/characteristic_value"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="4dp"
+        android:layout_height="55dp"
+        android:layout_marginStart="48dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="20dp"
+        android:autofillHints=""
         android:background="@drawable/boarder"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp"
+        android:inputType="text"
+        android:paddingTop="5dp"
+        android:paddingBottom="5dp"
         android:text="value"
         android:textColor="@android:color/black"
         android:textSize="15sp"
         android:textStyle="bold"
-        app:layout_constraintStart_toEndOf="@id/read_characteristics_value"
-        app:layout_constraintTop_toBottomOf="@id/expanded_characteristic_uuid" />
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/read_characteristics_value"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/radioGroupReadWriteNotify"
+        tools:ignore="LabelFor,RtlSymmetry" />
+
+    <Button
+        android:id="@+id/read_characteristics_value"
+        android:layout_width="88dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="27dp"
+        android:paddingTop="5dp"
+        android:paddingBottom="5dp"
+        android:text="ACK"
+        android:textSize="15sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/characteristic_value"
+        app:layout_constraintTop_toBottomOf="@+id/radioGroupReadWriteNotify" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -2,11 +2,18 @@ package com.example.ble_test_v13_0;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.text.Editable;
+import android.text.InputType;
+import android.text.TextWatcher;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseExpandableListAdapter;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -16,7 +23,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     private final ArrayList<ServiceModel> groupArrayList;
     private final ArrayList<ArrayList<CharacteristicsModel>> childArrayList;
     private final LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener;
-
+    private String editableValue;
     // View lookup cache (view holders for parents and corresponding children for each parent)
     private static class ViewHolderParent {
         TextView ServiceNameTextListView;
@@ -28,7 +35,11 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
         TextView CharUuidExpandedView;
         TextView CharNameExpandedView;
         Button CharReadExpandedView;
-        TextView CharValueExpandedView;
+        EditText CharValueExpandedView;
+        RadioGroup radioGroupReadWriteNotify;
+        RadioButton radioButtonReadAccess;
+        RadioButton radioButtonWriteAccess;
+        RadioButton radioButtonNotifyAccess;
     }
 
     public ServicesExpandableListAdapter(Context context, ArrayList<ServiceModel> groupArrayList,
@@ -38,6 +49,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
         this.groupArrayList = groupArrayList;
         this.childArrayList = childArrayList;
         this.readCharacteristicOnClickListener = readCharacteristicOnClickListener;
+        editableValue = "";
     }
     @Override
     public int getGroupCount() {
@@ -76,7 +88,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
 
     @Override
     public boolean hasStableIds() {
-        return true; //todo: true?
+        return true; //todo: false?
     }
 
     @SuppressLint("InflateParams")
@@ -152,14 +164,65 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
         viewHolderChild.CharNameExpandedView = rowView.
                 findViewById(R.id.expanded_characteristic_name);
 
+        viewHolderChild.radioGroupReadWriteNotify = rowView.
+                findViewById(R.id.radioGroupReadWriteNotify);
+
+        viewHolderChild.radioButtonReadAccess = rowView.findViewById(R.id.radioButtonRead);
+        viewHolderChild.radioButtonWriteAccess = rowView.findViewById(R.id.radioButtonWrite);
+        viewHolderChild.radioButtonNotifyAccess = rowView.findViewById(R.id.radioButtonNotification);
+
+        if (!characteristic.getReadAccess()){
+            viewHolderChild.radioButtonReadAccess.setVisibility(View.INVISIBLE);
+        }
+        else{ viewHolderChild.radioButtonReadAccess.setVisibility(View.VISIBLE);}
+
+        if (!characteristic.getWriteAccess()){
+            viewHolderChild.radioButtonWriteAccess.setVisibility(View.INVISIBLE);
+        }
+        else{ viewHolderChild.radioButtonWriteAccess.setVisibility(View.VISIBLE);}
+
+        if (!characteristic.getNotificationAccess()){
+            viewHolderChild.radioButtonNotifyAccess.setVisibility(View.INVISIBLE);
+        }
+        else{ viewHolderChild.radioButtonNotifyAccess.setVisibility(View.VISIBLE);}
+
         viewHolderChild.CharReadExpandedView = rowView.
                 findViewById(R.id.read_characteristics_value);
 
         viewHolderChild.CharReadExpandedView.setOnClickListener(
-                v -> readCharacteristicOnClickListener.onClick(groupPosition, childPosition));
+                v -> readCharacteristicOnClickListener.onClick(groupPosition,
+                        childPosition,
+                        viewHolderChild.radioButtonReadAccess.isChecked(),
+                        viewHolderChild.radioButtonWriteAccess.isChecked(),
+                        editableValue
+                ));
 
         viewHolderChild.CharValueExpandedView = rowView.
                 findViewById(R.id.characteristic_value);
+
+        viewHolderChild.CharValueExpandedView.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+            @Override
+            public void afterTextChanged(Editable s) {
+                editableValue = String.valueOf(s);
+            }
+        });
+
+        viewHolderChild.CharValueExpandedView.setOnKeyListener((v, keyCode, event) -> {
+            if ( !viewHolderChild.radioButtonWriteAccess.isChecked() ||
+                    viewHolderChild.radioButtonWriteAccess.getVisibility()==View.INVISIBLE){
+                return false;
+            }
+
+            if ((event.getAction() == KeyEvent.ACTION_DOWN)) {
+            }
+            return false;
+        });
 
         rowView.setTag(viewHolderChild); // Cache the viewHolder object inside the fresh view
 

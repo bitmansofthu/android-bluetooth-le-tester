@@ -506,7 +506,7 @@ public class MainActivity extends AppCompatActivity {
             if (status == BluetoothGatt.GATT_SUCCESS) {
 
                 runOnUiThread(() -> ((ConnectedFragment) Objects.requireNonNull
-                        (fm.findFragmentByTag("CONNECTION"))).
+                        (fm.findFragmentByTag("CONNECTION"))). //todo: CONNECTION -> const
                         GattCharacteristicsValueReceived(characteristic,
                                 characteristic.getValue()));
             } else {
@@ -526,7 +526,7 @@ public class MainActivity extends AppCompatActivity {
             if (status == BluetoothGatt.GATT_SUCCESS) {
 
                 runOnUiThread(() -> ((ConnectedFragment) Objects.requireNonNull
-                        (fm.findFragmentByTag("CONNECTION"))).
+                        (fm.findFragmentByTag("CONNECTION"))). //todo: CONNECTION -> const
                         GattCharacteristicsValueReceived(characteristic, value));
             } else {
                 Log.w(TAG, "onCharacteristicRead status: " + status);

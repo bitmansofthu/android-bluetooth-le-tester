@@ -135,9 +135,9 @@ public class ConnectedFragment extends Fragment {
                                                  byte[] value)
     {
         final StringBuilder string = new StringBuilder(value.length);
-        string.append("0x");
+
         for(byte byteChar : value)
-            string.append(String.format("%02X ", byteChar));
+            string.append(String.format("%02X", byteChar));
 
         for (int groupPos = 0;
              groupPos < expandableServicesAdapter.getGroupCount();
@@ -154,7 +154,7 @@ public class ConnectedFragment extends Fragment {
                         get(groupPos).
                             get(childPosition).setCharacteristicsValue(string.toString());
 
-                    // NOTICE: cast to (BaseExpandableListAdapter)
+                    // NOTICE: cast to (BaseExpandableListAdapter) needed
                     // for accessing notifyDataSetChanged !!!
                     ((BaseExpandableListAdapter)
                             expandableServicesAdapter).notifyDataSetChanged();
@@ -185,6 +185,9 @@ public class ConnectedFragment extends Fragment {
 
             serviceModelArrayList.add(new ServiceModel(serviceName, serviceUuid ));
 
+            // Array list for characteristics included per single service.
+            // This list is type of CharacteristicsModel used by ServicesExpandableListAdapter.
+            // So only items shown in the display are gathered here from received characteristics.
             ArrayList<CharacteristicsModel> CharPerServiceArrayList =
                     new ArrayList<>();
 
@@ -198,10 +201,25 @@ public class ConnectedFragment extends Fragment {
 
                 String characteristicsUuid = gattCharacteristic.getUuid().toString();
 
-                CharPerServiceArrayList.add(new CharacteristicsModel
-                        (characteristicsUuid, characteristicsName, "NULL"));
+                // check and set properties
+                int property = gattCharacteristic.getProperties();
+                boolean readAccess;
+                boolean writeAccess;
+                boolean notificationAccess;
 
-                //gattCharacteristic.getDescriptors()
+                readAccess = (property & BluetoothGattCharacteristic.PROPERTY_READ) != 0;
+
+                writeAccess = ((property & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0) ||
+                        ((property & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0) ||
+                        ((property & BluetoothGattCharacteristic.PROPERTY_SIGNED_WRITE) != 0);
+
+                notificationAccess = (property & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0;
+
+                CharPerServiceArrayList.add(new CharacteristicsModel
+                        (characteristicsUuid, characteristicsName, "NULL",
+                                true, readAccess, writeAccess, notificationAccess,
+                                true));
+
                 BtCharacteristicsArrayList.add(gattCharacteristic);
             }
 
@@ -217,17 +235,45 @@ public class ConnectedFragment extends Fragment {
     // attribute will be read from the remote device.
     @SuppressLint("MissingPermission")
     LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener =
-        (groupPosition, childPosition) -> {
+        (groupPosition, childPosition, read_access_checked, write_access_checked, editableValue) -> {
             //todo remove: System.out.println("Clicked: " + groupPosition +" | " + childPosition);
-
+//            System.out.println("read_checked: " + read_access_checked +
+//                    " | write_checked: " + write_access_checked);
+        if (read_access_checked){
             ((MainActivity) requireActivity()).
                     btGatt.
                     readCharacteristic(BtCharacteristicsArrayOfArrayList.
                             get(groupPosition).
                             get(childPosition));
-        };
+        }
+        else if (write_access_checked){
+            BluetoothGattCharacteristic characteristic =
+                    BtCharacteristicsArrayOfArrayList.get(groupPosition).
+                            get(childPosition);
+            boolean retValue = false;
 
-    public void showGattProfilesInExpandableListView(){
+            System.out.println("Write value: " + editableValue);
+
+            if (editableValue != null){
+                byte[] value = editableValue.getBytes();
+
+                characteristicsModelArrayList.
+                        get(groupPosition).
+                        get(childPosition).setCharacteristicsValue(editableValue);
+                ((BaseExpandableListAdapter)
+                        expandableServicesAdapter).notifyDataSetChanged();
+
+                for(byte byteChar : value)
+                    System.out.println(byteChar);
+
+                characteristic.setValue(value);
+                retValue = ((MainActivity) requireActivity()).
+                        btGatt.writeCharacteristic(characteristic);
+            }
+        }
+    };
+
+    public void showGattProfilesInExpandableListView() {
         // Show services in Expandable type of List view (characteristics expanded)
 
         servicesExpandableListView = fragment_view.findViewById(R.id.Services_expandableListView);
