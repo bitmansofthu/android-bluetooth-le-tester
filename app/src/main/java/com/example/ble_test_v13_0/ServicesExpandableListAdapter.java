@@ -24,6 +24,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     private final ArrayList<ArrayList<CharacteristicsModel>> childArrayList;
     private final LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener;
     private String editableValue;
+
     // View lookup cache (view holders for parents and corresponding children for each parent)
     private static class ViewHolderParent {
         TextView ServiceNameTextListView;
@@ -88,7 +89,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
 
     @Override
     public boolean hasStableIds() {
-        return true; //todo: false?
+        return true;
     }
 
     @SuppressLint("InflateParams")
@@ -99,6 +100,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
         String service_name = service.getServiceName();
         String service_uuid = service.getServiceUUID();
 
+        View rowView;
         ViewHolderParent viewHolder; // view lookup cache stored in tag
 
         if (convertView == null) {
@@ -107,26 +109,28 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
             LayoutInflater layoutInflater = (LayoutInflater) this.context.
                     getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 
-            convertView = layoutInflater.inflate(R.layout.list_service_item_view, null);
+            rowView = layoutInflater.inflate(R.layout.list_service_item_view, null);
 
-            viewHolder.ServiceNameTextListView = convertView.
+            viewHolder.ServiceNameTextListView = rowView.
                                                     findViewById(R.id.service_group_name);
 
-            viewHolder.ServiceUuidListTextView = convertView.
+            viewHolder.ServiceUuidListTextView = rowView.
                                                     findViewById(R.id.service_group_id);
 
-            convertView.setTag(viewHolder); // Cache the viewHolder object inside the fresh view
+            rowView.setTag(viewHolder); // Cache the viewHolder object inside the fresh view
         }
         else {
+            rowView = convertView;
             // View is being recycled, retrieve the viewHolder object from tag
-            viewHolder = (ViewHolderParent) convertView.getTag();
+            viewHolder = (ViewHolderParent) rowView.getTag();
         }
+
         // Populate the data from the data object via the viewHolder object
         // into the template view.
         viewHolder.ServiceNameTextListView.setText(service_name);
         viewHolder.ServiceUuidListTextView.setText(service_uuid);
 
-        return convertView;
+        return rowView;
     }
 
     @SuppressLint("InflateParams")
@@ -134,42 +138,47 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     public View getChildView(int groupPosition, int childPosition, boolean isLastChild,
                              View convertView, ViewGroup parent) {
 
-        // Notice: different implementation compared to getGroupView.
-        // If resources (findViewById) were retrieved in 'convertView == null',
-        // only visible child-items on the display would have been set (not invisible ones).
-        // When invisible ones were scrolled to be visible, still no initialization was done...
-        // So view-holders were not created for all child-items.
-        // groupPosition and childPosition were not set correctly for all items...
         CharacteristicsModel characteristic =
                 (CharacteristicsModel)getChild(groupPosition, childPosition);
 
         View rowView;
-
-        ViewHolderChild viewHolderChild = new ViewHolderChild();
+        ViewHolderChild viewHolderChild;
 
         if (convertView == null) {
+            viewHolderChild = new ViewHolderChild();
+
             LayoutInflater layoutInflater = (LayoutInflater) this.context
                     .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
             rowView = layoutInflater.inflate(R.layout.list_characteristic_item_view, null);
+
+            viewHolderChild.CharUuidExpandedView = rowView.
+                    findViewById(R.id.expanded_characteristic_uuid);
+
+            viewHolderChild.CharNameExpandedView = rowView.
+                    findViewById(R.id.expanded_characteristic_name);
+
+            viewHolderChild.radioGroupReadWriteNotify = rowView.
+                    findViewById(R.id.radioGroupReadWriteNotify);
+
+            viewHolderChild.radioButtonReadAccess = rowView.findViewById(R.id.radioButtonRead);
+            viewHolderChild.radioButtonWriteAccess = rowView.findViewById(R.id.radioButtonWrite);
+            viewHolderChild.radioButtonNotifyAccess = rowView.findViewById(R.id.radioButtonNotification);
+
+            viewHolderChild.CharReadExpandedView = rowView.
+                    findViewById(R.id.read_characteristics_value);
+
+            viewHolderChild.CharValueExpandedView = rowView.
+                    findViewById(R.id.characteristic_value);
+
+            rowView.setTag(viewHolderChild); // Cache the viewHolder object inside the fresh view
         }
         else {
             rowView = convertView;
             // View is being recycled, retrieve the viewHolder object from tag
-            // viewHolderChild = (ViewHolderChild) rowView.getTag();
+            viewHolderChild = (ViewHolderChild) rowView.getTag();
         }
-
-        viewHolderChild.CharUuidExpandedView = rowView.
-                findViewById(R.id.expanded_characteristic_uuid);
-
-        viewHolderChild.CharNameExpandedView = rowView.
-                findViewById(R.id.expanded_characteristic_name);
-
-        viewHolderChild.radioGroupReadWriteNotify = rowView.
-                findViewById(R.id.radioGroupReadWriteNotify);
-
-        viewHolderChild.radioButtonReadAccess = rowView.findViewById(R.id.radioButtonRead);
-        viewHolderChild.radioButtonWriteAccess = rowView.findViewById(R.id.radioButtonWrite);
-        viewHolderChild.radioButtonNotifyAccess = rowView.findViewById(R.id.radioButtonNotification);
+        // Populate the data from the data object via the viewHolder object
+        // into the template view.
 
         if (!characteristic.getReadAccess()){
             viewHolderChild.radioButtonReadAccess.setVisibility(View.INVISIBLE);
@@ -186,19 +195,31 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
         }
         else{ viewHolderChild.radioButtonNotifyAccess.setVisibility(View.VISIBLE);}
 
-        viewHolderChild.CharReadExpandedView = rowView.
-                findViewById(R.id.read_characteristics_value);
-
         viewHolderChild.CharReadExpandedView.setOnClickListener(
                 v -> readCharacteristicOnClickListener.onClick(groupPosition,
                         childPosition,
-                        viewHolderChild.radioButtonReadAccess.isChecked(),
-                        viewHolderChild.radioButtonWriteAccess.isChecked(),
+                        characteristic.getReadChecked(),
+                        characteristic.getWriteChecked(),
                         editableValue
                 ));
 
-        viewHolderChild.CharValueExpandedView = rowView.
-                findViewById(R.id.characteristic_value);
+        viewHolderChild.radioButtonReadAccess.setOnClickListener(v -> {
+            characteristic.setReadChecked(true);
+            characteristic.setWriteChecked(false);
+            characteristic.setNotificationChecked(false);
+        });
+
+        viewHolderChild.radioButtonWriteAccess.setOnClickListener(v -> {
+            characteristic.setReadChecked(false);
+            characteristic.setWriteChecked(true);
+            characteristic.setNotificationChecked(false);
+        });
+
+        viewHolderChild.radioButtonNotifyAccess.setOnClickListener(v -> {
+            characteristic.setReadChecked(false);
+            characteristic.setWriteChecked(false);
+            characteristic.setNotificationChecked(true);
+        });
 
         viewHolderChild.CharValueExpandedView.addTextChangedListener(new TextWatcher() {
             @Override
@@ -212,7 +233,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
                 editableValue = String.valueOf(s);
             }
         });
-
+/*
         viewHolderChild.CharValueExpandedView.setOnKeyListener((v, keyCode, event) -> {
             if ( !viewHolderChild.radioButtonWriteAccess.isChecked() ||
                     viewHolderChild.radioButtonWriteAccess.getVisibility()==View.INVISIBLE){
@@ -223,16 +244,30 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
             }
             return false;
         });
-
-        rowView.setTag(viewHolderChild); // Cache the viewHolder object inside the fresh view
-
-        // Populate the data from the data object via the viewHolder object
-        // into the template view.
+*/
         viewHolderChild.CharUuidExpandedView.setText(characteristic.getCharacteristicsUUID());
 
         viewHolderChild.CharNameExpandedView.setText(characteristic.getCharacteristicsName());
 
         viewHolderChild.CharValueExpandedView.setText(characteristic.getCharacteristicsValue());
+
+        if (characteristic.getReadChecked() &&
+            !viewHolderChild.radioButtonReadAccess.isChecked())
+        {
+            viewHolderChild.radioButtonReadAccess.setChecked(true);
+        }
+
+        if (characteristic.getWriteChecked() &&
+            !viewHolderChild.radioButtonWriteAccess.isChecked())
+        {
+            viewHolderChild.radioButtonWriteAccess.setChecked(true);
+        }
+
+        if (characteristic.getNotificationChecked() &&
+            !viewHolderChild.radioButtonNotifyAccess.isChecked())
+        {
+            viewHolderChild.radioButtonNotifyAccess.setChecked(true);
+        }
 
         return rowView;
     }

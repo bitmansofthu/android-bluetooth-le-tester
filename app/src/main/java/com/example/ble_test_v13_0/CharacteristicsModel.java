@@ -1,34 +1,61 @@
 package com.example.ble_test_v13_0;
 
+import java.util.BitSet;
+
 public class CharacteristicsModel {
     private final String characteristicsUUID;
     private final String characteristicsName;
     private String characteristicsValue;
-    private final boolean radioGroup;
-    private final boolean readAccess;
-    private final boolean writeAccess;
-    private final boolean notificationAccess;
+
+    // Radio group-parameter in such is useless here,
+    // but important for giving correct amount of UI-components
+    // (see ServicesExpandableListAdapter:getChildrenCount)
+    private final boolean radioButtonGroup; //read/write/notification bound inside radio group
+
+    // bit set:
+    //  bit 0 = 1: radio-button visible
+    //  bit 1 = 1: radio-button checked
+    private final BitSet readAccess; // state of radioButton-read
+    private final BitSet writeAccess; // state of radioButton-write
+    private final BitSet notificationAccess; // state of radioButton-notify
+
+    // Acknowledge-parameter (for ACK-button) in such is useless here,
+    // but important for giving correct amount of UI-components
+    // (see ServicesExpandableListAdapter:getChildrenCount)
     private final boolean acknowledge;
 
-    public CharacteristicsModel(String characteristicsUUID, String characteristicsName, String characteristicsValue,
-                                boolean radioGroup, boolean readAccess, boolean writeAccess, boolean notificationAccess,
+    public CharacteristicsModel(String characteristicsUUID,
+                                String characteristicsName,
+                                String characteristicsValue,
+                                boolean radioGroup,
+                                boolean readAccess,
+                                boolean writeAccess,
+                                boolean notificationAccess,
                                 boolean acknowledge) {
         this.characteristicsUUID = characteristicsUUID;
         this.characteristicsName = characteristicsName;
         this.characteristicsValue = characteristicsValue;
 
-        // Radio group-parameter in such is useless here,
-        // but important for giving correct amount of UI-components
-        // (see ServicesExpandableListAdapter:getChildrenCount)
-        this.radioGroup = radioGroup;
+        this.radioButtonGroup = radioGroup;
 
-        this.readAccess = readAccess;
-        this.writeAccess = writeAccess;
-        this.notificationAccess = notificationAccess;
+        this.readAccess = new BitSet(2);
+        // disable/enable read-access -> read-radio button invisible/visible
+        this.readAccess.set(0, readAccess);
+        // set read-radio button initially checked according to read-access
+        this.readAccess.set(1, readAccess);
 
-        // Acknowledge-parameter (for ACK-button) in such is useless here,
-        // but important for giving correct amount of UI-components
-        // (see ServicesExpandableListAdapter:getChildrenCount)
+        this.writeAccess = new BitSet(2);
+        // disable/enable write-access -> write-radio button invisible/visible
+        this.writeAccess.set(0, writeAccess);
+        // set write-radio button initially unchecked
+        this.writeAccess.set(1, false);
+
+        this.notificationAccess = new BitSet(2);
+        // disable/enable notify-access -> notify-radio button invisible/visible
+        this.notificationAccess.set(0, notificationAccess);
+        // set notify-radio button initially unchecked
+        this.notificationAccess.set(1, false);
+
         this.acknowledge = acknowledge;
     }
 
@@ -39,14 +66,35 @@ public class CharacteristicsModel {
         return this.characteristicsName;
     }
     public boolean getReadAccess() {
-        return this.readAccess;
+        return this.readAccess.get(0);
     }
+    public boolean getReadChecked() {
+        return this.readAccess.get(1);
+    }
+    public void setReadChecked(boolean enable) {
+        this.readAccess.set(1, enable);
+    }
+
     public boolean getWriteAccess() {
-        return this.writeAccess;
+        return this.writeAccess.get(0);
     }
+    public boolean getWriteChecked() {
+        return this.writeAccess.get(1);
+    }
+    public void setWriteChecked(boolean enable) {
+        this.writeAccess.set(1, enable);
+    }
+
     public boolean getNotificationAccess() {
-        return this.notificationAccess;
+        return this.notificationAccess.get(0);
     }
+    public boolean getNotificationChecked() {
+        return this.notificationAccess.get(1);
+    }
+    public void setNotificationChecked(boolean enable) {
+        this.notificationAccess.set(1, enable);
+    }
+
     public String getCharacteristicsValue() {
         return this.characteristicsValue;
     }

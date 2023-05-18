@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Bluetooth LE Tester</string>
     <string name="disconnect">Disconnect</string>
@@ -6,14 +7,14 @@
     <string name="Scanning">Scanning…</string>
     <string name="mac_address">MAC address</string>
     <string name="DeviceName">Device name</string>
-    <string name="characteristics_unknown_name">Unknown characteristics name</string>
+    <string name="characteristics_unknown_name">Unknown name</string>
     <string name="characteristics_unknown_uuid">Unknown UUID</string>
     <string name="characteristics_read_access">ReadAccess</string>
     <string name="characteristics_write_access">WriteAccess</string>
     <string name="characteristics_notify_access">NotifyAccess</string>
     <string name="characteristics_value">value</string>
     <string name="characteristics_acknowledge_action">ACK</string>
-    <string name="service_name">Unknown service name</string>
-    <string name="service_uuid">Unknown UUID</string>
+    <string name="service_name">SERVICE</string>
+    <string name="service_uuid">uuid</string>
     <string name="connection_progressing">Progressing…</string>
 </resources>
