@@ -1,15 +1,20 @@
 package com.example.ble_test_v13_0;
 
+import static android.content.ContentValues.TAG;
+import static android.text.TextUtils.concat;
+
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 import android.content.Context;
 import android.database.DataSetObserver;
+import android.os.Build;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -252,23 +257,84 @@ public class ConnectedFragment extends Fragment {
                             get(childPosition);
             boolean retValue = false;
 
-            System.out.println("Write value: " + editableValue);
-
             if (editableValue != null){
-                byte[] value = editableValue.getBytes();
+                String nibbleString;
+                if ( (editableValue.length() % 2) != 0){
+                    // adjust to even number of octets to make nibble-to-byte conversion easier
+                    // e.g. 'abc' -> '0abc'
+                    nibbleString = "0".
+                            concat(editableValue).toLowerCase(Locale.ROOT); // e.g 'A' -> 'a'
+                }
+                else{
+                    nibbleString = editableValue;
+                }
 
+                int nibbleLength = nibbleString.length();
+                int byteLength = nibbleLength / 2; // single octet contains two nibbles
+
+                byte[] outValueBuff = new byte[byteLength];
+
+                byte outValueByte = 0;
+                boolean badInput = false;
+
+                for (int index = 0; index < nibbleLength; index++)
+                {
+                    char nibbleAscii = nibbleString.charAt(index);
+                    byte nibbleByte;
+
+                    // Convert ASCII-formatted hexadecimal nibbles to integer
+
+                    if ( (nibbleAscii >= '0') && (nibbleAscii <= '9'))
+                    {
+                        nibbleByte = (byte)(nibbleAscii - '0');
+                    }
+                    else if ( (nibbleAscii >= 'a') && (nibbleAscii <= 'f'))
+                    {
+                        nibbleByte = (byte)(nibbleAscii - 'a');
+                        nibbleByte += 10; // e.g. a(hex) = 10(dec)
+                    }
+                    else{
+                        nibbleString = ""; // clean edited value
+                        badInput = true;
+                        Log.w(TAG, "Non-ascii value entered");
+                        break;
+                    }
+
+                    if ((index % 2) == 0) { // lsb nibble
+                        outValueByte = (byte) (nibbleByte & 0x0f);
+                    }
+                    else { // msb nibble
+                        outValueByte = (byte) ( (byte) ((outValueByte << 4) & 0xf0) | nibbleByte);
+                        outValueBuff[index / 2] = outValueByte;
+                    }
+                }
+
+                if (!badInput){
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+                        // SDK >=v33 (OS ver.13)
+                        ((MainActivity) requireActivity()).
+                                btGatt.writeCharacteristic
+                                        (characteristic,
+                                        outValueBuff,
+                                         //WRITE_TYPE_NO_RESPONSE, WRITE_TYPE_SIGNED ??
+                                        BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                    }
+                    else{
+                        // If accepted (hexadecimal) value, sent value to peripheral (server).
+                        // This method was deprecated in API level 33...
+                        characteristic.setValue(outValueBuff);
+                        retValue = ((MainActivity) requireActivity()).
+                                btGatt.writeCharacteristic(characteristic);
+                    }
+                }
+
+                // update new value to the adapter
                 characteristicsModelArrayList.
                         get(groupPosition).
-                        get(childPosition).setCharacteristicsValue(editableValue);
+                        get(childPosition).setCharacteristicsValue(nibbleString);
+
                 ((BaseExpandableListAdapter)
                         expandableServicesAdapter).notifyDataSetChanged();
-
-                for(byte byteChar : value)
-                    System.out.println(byteChar);
-
-                characteristic.setValue(value);
-                retValue = ((MainActivity) requireActivity()).
-                        btGatt.writeCharacteristic(characteristic);
             }
         }
     };

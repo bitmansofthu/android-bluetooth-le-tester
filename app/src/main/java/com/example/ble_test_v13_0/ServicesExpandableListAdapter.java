@@ -233,18 +233,32 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
                 editableValue = String.valueOf(s);
             }
         });
-/*
+
+        //todo: remove as useless?
+        viewHolderChild.CharValueExpandedView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                System.out.println("Write test");
+                return false;
+            }
+        });
+
+        //todo: remove as useless?
+        //viewHolderChild.CharValueExpandedView.getKeyListener()
         viewHolderChild.CharValueExpandedView.setOnKeyListener((v, keyCode, event) -> {
-            if ( !viewHolderChild.radioButtonWriteAccess.isChecked() ||
-                    viewHolderChild.radioButtonWriteAccess.getVisibility()==View.INVISIBLE){
+            // onKey-event
+            if (!characteristic.getWriteChecked()){
                 return false;
             }
 
-            if ((event.getAction() == KeyEvent.ACTION_DOWN)) {
+            if ((event.getAction() == KeyEvent.ACTION_DOWN) &&
+                   ( ((keyCode >= KeyEvent.KEYCODE_A) && (keyCode <= KeyEvent.KEYCODE_F)) ||
+                    ((keyCode >= KeyEvent.KEYCODE_0) && (keyCode <= KeyEvent.KEYCODE_9)) )
+            ) {
             }
             return false;
         });
-*/
+
         viewHolderChild.CharUuidExpandedView.setText(characteristic.getCharacteristicsUUID());
 
         viewHolderChild.CharNameExpandedView.setText(characteristic.getCharacteristicsName());

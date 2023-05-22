@@ -82,6 +82,8 @@
         android:autofillHints=""
         android:background="@drawable/boarder"
         android:inputType="text"
+        android:hint="Hexadecimal"
+        android:textColorHint="@color/cardview_shadow_start_color"
         android:paddingTop="5dp"
         android:paddingBottom="5dp"
         android:text="@string/characteristics_value"

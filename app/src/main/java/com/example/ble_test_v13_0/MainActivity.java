@@ -265,8 +265,6 @@ public class MainActivity extends AppCompatActivity {
                         }
 
                         list_item++;
-
-                        //Log.w(TAG, "service: " + descriptive_name);
                     }
                     else if (list_item == 2) {
                         // trim for removing all leading and trailing space
