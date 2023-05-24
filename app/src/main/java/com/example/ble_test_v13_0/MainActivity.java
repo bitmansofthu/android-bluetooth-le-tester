@@ -28,6 +28,7 @@ import android.widget.Toast;
 import static android.Manifest.permission.BLUETOOTH_SCAN;
 import static android.Manifest.permission.BLUETOOTH_CONNECT;
 import static android.bluetooth.BluetoothDevice.TRANSPORT_LE;
+import static android.bluetooth.BluetoothGatt.GATT_SUCCESS;
 import static android.content.ContentValues.TAG;
 
 import java.io.BufferedReader;
@@ -321,7 +322,7 @@ public class MainActivity extends AppCompatActivity {
     private void controlConnectingTimer(BT_CONNECTION_STATE connectionState) {
         if (connectionState == BT_CONNECTION_STATE.CONNECTING){
             connection_handler.postDelayed(() -> {
-                // after timeout start to disconnect (if still connecting)
+                // after timeout, start to disconnect (if still connecting)
                 if (mConnectionState == BT_CONNECTION_STATE.CONNECTING) {
                     HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTING);
                 }
@@ -486,7 +487,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-            if (status == BluetoothGatt.GATT_SUCCESS) {
+            if (status == GATT_SUCCESS) {
                 runOnUiThread(() -> ((ConnectedFragment) Objects.requireNonNull
                         (fm.findFragmentByTag("CONNECTION"))).GattServicesDiscovered());
             } else {
@@ -494,15 +495,14 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        // Will be here when executing this SW in Android ver <= 12
         // This method was deprecated in API level 33.
-        // Will be here when executing this SW in Android 12
         @Override
         public void onCharacteristicRead (BluetoothGatt gatt,
                                           BluetoothGattCharacteristic characteristic,
                                           int status)
         {
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-
+            if (status == GATT_SUCCESS) {
                 runOnUiThread(() -> ((ConnectedFragment) Objects.requireNonNull
                         (fm.findFragmentByTag("CONNECTION"))). //todo: CONNECTION -> const
                         GattCharacteristicsValueReceived(characteristic,
@@ -521,8 +521,7 @@ public class MainActivity extends AppCompatActivity {
                 int status
         )
         {
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-
+            if (status == GATT_SUCCESS) {
                 runOnUiThread(() -> ((ConnectedFragment) Objects.requireNonNull
                         (fm.findFragmentByTag("CONNECTION"))). //todo: CONNECTION -> const
                         GattCharacteristicsValueReceived(characteristic, value));
@@ -530,8 +529,48 @@ public class MainActivity extends AppCompatActivity {
                 Log.w(TAG, "onCharacteristicRead status: " + status);
             }
         }
-};
 
+        // Callback triggered as a result of a remote characteristic notification.
+        // This method is for API level >= 33.
+        @Override
+        public void onCharacteristicChanged(BluetoothGatt gatt,
+                                BluetoothGattCharacteristic characteristic,
+                                byte[] value){
+                runOnUiThread(() -> ((ConnectedFragment) Objects.requireNonNull
+                        (fm.findFragmentByTag("CONNECTION"))). //todo: CONNECTION -> const
+                        GattCharacteristicsValueReceived(characteristic, value));
+
+            Log.w(TAG, "onCharacteristicChanged"); // todo
+        }
+
+        // Callback triggered as a result of a remote characteristic notification.
+        // This method was deprecated in API level 33.
+        @Override
+        public void onCharacteristicChanged(BluetoothGatt gatt,
+                                            BluetoothGattCharacteristic characteristic){
+
+            runOnUiThread(() -> ((ConnectedFragment) Objects.requireNonNull
+                    (fm.findFragmentByTag("CONNECTION"))). //todo: CONNECTION -> const
+                    GattCharacteristicsValueReceived(characteristic,
+                    characteristic.getValue()));
+
+            Log.w(TAG, "onCharacteristicChanged"); // todo
+        }
+
+        @Override
+        public void onCharacteristicWrite (BluetoothGatt gatt,
+                                           BluetoothGattCharacteristic characteristic,
+                                           int status){
+            if (status != GATT_SUCCESS){
+                runOnUiThread(() -> ((ConnectedFragment) Objects.requireNonNull
+                        (fm.findFragmentByTag("CONNECTION"))). //todo: CONNECTION -> const
+                        GattCharacteristicsValueWriteFailed(characteristic));
+
+                Log.w(TAG, "onCharacteristicWrite: writing new value to peripheral failed");
+            }
+        }
+
+    };
 
     @SuppressLint("MissingPermission")
     // MissingPermission here just to avoid warnings. Runtime permission for BT_CONNECT

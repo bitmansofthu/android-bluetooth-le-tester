@@ -15,6 +15,7 @@ import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 
@@ -200,7 +201,8 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
                         childPosition,
                         characteristic.getReadChecked(),
                         characteristic.getWriteChecked(),
-                        editableValue
+                        editableValue,
+                        characteristic.getNotificationChecked()
                 ));
 
         viewHolderChild.radioButtonReadAccess.setOnClickListener(v -> {
@@ -219,6 +221,8 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
             characteristic.setReadChecked(false);
             characteristic.setWriteChecked(false);
             characteristic.setNotificationChecked(true);
+            Toast.makeText(this.context, "Press ACK-button to enable notifications from peripheral.",
+                    Toast.LENGTH_SHORT).show();
         });
 
         viewHolderChild.CharValueExpandedView.addTextChangedListener(new TextWatcher() {
@@ -238,7 +242,6 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
         viewHolderChild.CharValueExpandedView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                System.out.println("Write test");
                 return false;
             }
         });
@@ -290,4 +293,5 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     public boolean isChildSelectable(int groupPosition, int childPosition) {
         return true;
     }
+
 }

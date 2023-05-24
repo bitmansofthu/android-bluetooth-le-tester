@@ -1,11 +1,14 @@
 package com.example.ble_test_v13_0;
 
+import static android.bluetooth.BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE;
 import static android.content.ContentValues.TAG;
 import static android.text.TextUtils.concat;
 
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
+import android.bluetooth.BluetoothStatusCodes;
 import android.content.Context;
 import android.database.DataSetObserver;
 import android.os.Build;
@@ -22,10 +25,12 @@ import android.widget.BaseExpandableListAdapter;
 import android.widget.Button;
 import android.widget.ExpandableListAdapter;
 import android.widget.ExpandableListView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -51,6 +56,10 @@ public class ConnectedFragment extends Fragment {
 
     private ExpandableListView servicesExpandableListView;
     private ExpandableListAdapter expandableServicesAdapter;
+
+    // UUID for Client Characteristic Configuration
+    // See BT SIG: public/assigned_numbers/uuids/descriptors.yaml
+    public static String CLIENT_CHARACTERISTIC_CONFIG = "00002902-0000-1000-8000-00805f9b34fb";
 
     ArrayList<ServiceModel> serviceModelArrayList = new ArrayList<>();
     ArrayList<ArrayList<CharacteristicsModel>> characteristicsModelArrayList =
@@ -171,6 +180,12 @@ public class ConnectedFragment extends Fragment {
 
     }
 
+    public void GattCharacteristicsValueWriteFailed(
+            BluetoothGattCharacteristic characteristic){
+        Toast.makeText(this_context, "Failed to write value. " +
+                "Check the content and try again.", Toast.LENGTH_SHORT).show();
+    }
+
     @SuppressLint("MissingPermission")
     public void GattServicesDiscovered(){
 
@@ -240,7 +255,10 @@ public class ConnectedFragment extends Fragment {
     // attribute will be read from the remote device.
     @SuppressLint("MissingPermission")
     LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener =
-        (groupPosition, childPosition, read_access_checked, write_access_checked, editableValue) -> {
+        (groupPosition, childPosition,
+         read_access_checked,
+         write_access_checked, editableValue,
+         notification_access_checked) -> {
             //todo remove: System.out.println("Clicked: " + groupPosition +" | " + childPosition);
 //            System.out.println("read_checked: " + read_access_checked +
 //                    " | write_checked: " + write_access_checked);
@@ -255,8 +273,8 @@ public class ConnectedFragment extends Fragment {
             BluetoothGattCharacteristic characteristic =
                     BtCharacteristicsArrayOfArrayList.get(groupPosition).
                             get(childPosition);
-            boolean retValue = false;
 
+            //todo: separate to new function
             if (editableValue != null){
                 String nibbleString;
                 if ( (editableValue.length() % 2) != 0){
@@ -310,21 +328,31 @@ public class ConnectedFragment extends Fragment {
                 }
 
                 if (!badInput){
+                    // If supported (hexadecimal) value, sent value to peripheral (server).
+
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
                         // SDK >=v33 (OS ver.13)
-                        ((MainActivity) requireActivity()).
+
+                        int retValue = ((MainActivity) requireActivity()).
                                 btGatt.writeCharacteristic
                                         (characteristic,
                                         outValueBuff,
                                          //WRITE_TYPE_NO_RESPONSE, WRITE_TYPE_SIGNED ??
                                         BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+
+                        if (retValue != BluetoothStatusCodes.SUCCESS){
+                            Log.w(TAG, "Write failed"); // todo: what to do?
+                        }
                     }
                     else{
-                        // If accepted (hexadecimal) value, sent value to peripheral (server).
                         // This method was deprecated in API level 33...
                         characteristic.setValue(outValueBuff);
-                        retValue = ((MainActivity) requireActivity()).
+                        boolean retValue = ((MainActivity) requireActivity()).
                                 btGatt.writeCharacteristic(characteristic);
+
+                        if (!retValue){
+                            Log.w(TAG, "Write failed"); // todo: what to do?
+                        }
                     }
                 }
 
@@ -332,10 +360,25 @@ public class ConnectedFragment extends Fragment {
                 characteristicsModelArrayList.
                         get(groupPosition).
                         get(childPosition).setCharacteristicsValue(nibbleString);
-
+                // and notify the adapter for updating the view
                 ((BaseExpandableListAdapter)
                         expandableServicesAdapter).notifyDataSetChanged();
             }
+        }
+        else if (notification_access_checked){
+            BluetoothGattCharacteristic characteristic =
+                    BtCharacteristicsArrayOfArrayList.get(groupPosition).
+                            get(childPosition);
+
+            ((MainActivity) requireActivity()).
+                    btGatt.setCharacteristicNotification(characteristic, true);
+
+            BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
+                    UUID.fromString(CLIENT_CHARACTERISTIC_CONFIG));
+            descriptor.setValue(ENABLE_NOTIFICATION_VALUE);
+
+            ((MainActivity) requireActivity()).btGatt.
+                    writeDescriptor(descriptor);
         }
     };
 
