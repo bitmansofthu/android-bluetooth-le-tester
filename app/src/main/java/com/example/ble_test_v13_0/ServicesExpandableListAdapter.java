@@ -3,7 +3,6 @@ package com.example.ble_test_v13_0;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.text.Editable;
-import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -24,6 +23,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     private final ArrayList<ServiceModel> groupArrayList;
     private final ArrayList<ArrayList<CharacteristicsModel>> childArrayList;
     private final LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener;
+    private final LvChildItemRbOnClickListener rwnRadioButtonOnClickListener;
     private String editableValue;
 
     // View lookup cache (view holders for parents and corresponding children for each parent)
@@ -46,11 +46,13 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
 
     public ServicesExpandableListAdapter(Context context, ArrayList<ServiceModel> groupArrayList,
                                          ArrayList<ArrayList<CharacteristicsModel>> childArrayList,
-                                         LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener) {
+                                         LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener,
+                                         LvChildItemRbOnClickListener rwnRadioButtonOnClickListener) {
         this.context = context;
         this.groupArrayList = groupArrayList;
         this.childArrayList = childArrayList;
         this.readCharacteristicOnClickListener = readCharacteristicOnClickListener;
+        this.rwnRadioButtonOnClickListener = rwnRadioButtonOnClickListener;
         editableValue = "";
     }
     @Override
@@ -205,25 +207,17 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
                         characteristic.getNotificationChecked()
                 ));
 
-        viewHolderChild.radioButtonReadAccess.setOnClickListener(v -> {
-            characteristic.setReadChecked(true);
-            characteristic.setWriteChecked(false);
-            characteristic.setNotificationChecked(false);
-        });
+        viewHolderChild.radioButtonReadAccess.setOnClickListener(v ->
+                rwnRadioButtonOnClickListener.onClick(groupPosition, childPosition,
+                true, false, false));
 
-        viewHolderChild.radioButtonWriteAccess.setOnClickListener(v -> {
-            characteristic.setReadChecked(false);
-            characteristic.setWriteChecked(true);
-            characteristic.setNotificationChecked(false);
-        });
+        viewHolderChild.radioButtonWriteAccess.setOnClickListener(v ->
+                rwnRadioButtonOnClickListener.onClick(groupPosition, childPosition,
+                false, true, false));
 
-        viewHolderChild.radioButtonNotifyAccess.setOnClickListener(v -> {
-            characteristic.setReadChecked(false);
-            characteristic.setWriteChecked(false);
-            characteristic.setNotificationChecked(true);
-            Toast.makeText(this.context, "Press ACK-button to enable notifications from peripheral.",
-                    Toast.LENGTH_SHORT).show();
-        });
+        viewHolderChild.radioButtonNotifyAccess.setOnClickListener(v ->
+                rwnRadioButtonOnClickListener.onClick(groupPosition, childPosition,
+                false, false, true));
 
         viewHolderChild.CharValueExpandedView.addTextChangedListener(new TextWatcher() {
             @Override

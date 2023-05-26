@@ -1,8 +1,8 @@
 package com.example.ble_test_v13_0;
 
+import static android.bluetooth.BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE;
 import static android.bluetooth.BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE;
 import static android.content.ContentValues.TAG;
-import static android.text.TextUtils.concat;
 
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothGattCharacteristic;
@@ -183,7 +183,7 @@ public class ConnectedFragment extends Fragment {
     public void GattCharacteristicsValueWriteFailed(
             BluetoothGattCharacteristic characteristic){
         Toast.makeText(this_context, "Failed to write value. " +
-                "Check the content and try again.", Toast.LENGTH_SHORT).show();
+                "Check the content and try again.", Toast.LENGTH_LONG).show();
     }
 
     @SuppressLint("MissingPermission")
@@ -250,6 +250,111 @@ public class ConnectedFragment extends Fragment {
         showGattProfilesInExpandableListView();
     }
 
+    public void readStateHandler(int groupPosition, int childPosition,
+                                    boolean enable){
+
+        // Notice, that clicking of the read radio-button doesn't trigger actual
+        // read-message to GATT-server. ACK-button does that..
+
+        if (!characteristicsModelArrayList.
+                get(groupPosition).
+                get(childPosition).getReadAccess()){
+            return; // read not supported for this characteristic
+        }
+
+        if (enable == characteristicsModelArrayList.
+                get(groupPosition).get(childPosition).
+                getReadChecked()){
+            return; // no state change
+        }
+
+        // change the state in the adapter
+        characteristicsModelArrayList.get(groupPosition).
+                get(childPosition).setReadChecked(enable);
+    }
+
+    public void writeStateHandler(int groupPosition, int childPosition,
+                                 boolean enable){
+        // Notice, that clicking of the write radio-button doesn't trigger actual
+        // write-message to GATT-server. ACK-button does that..
+
+        if (!characteristicsModelArrayList.
+                get(groupPosition).
+                get(childPosition).getWriteAccess()){
+            return; // write not supported for this characteristic
+        }
+
+        if (enable == characteristicsModelArrayList.
+                get(groupPosition).get(childPosition).
+                getWriteChecked()){
+            return; // no state change
+        }
+
+        // change the state in the adapter
+        characteristicsModelArrayList.get(groupPosition).
+                get(childPosition).setWriteChecked(enable);
+    }
+
+    @SuppressLint("MissingPermission")
+    public void notificationStateHandler(int groupPosition, int childPosition,
+                                    boolean enable){
+        // Pushing of the Notification radio-button triggers
+        // 'Notification enable'-message to GATT-server.
+        // Notification will be disabled, if Read radio-button or
+        // Write radio-button will be pushed. That's because single Radio-button
+        // can't be toggled by clicking it several times.
+
+        BluetoothGattCharacteristic characteristic =
+                BtCharacteristicsArrayOfArrayList.get(groupPosition).
+                        get(childPosition);
+
+        if (!characteristicsModelArrayList.
+                get(groupPosition).
+                get(childPosition).getNotificationAccess()){
+            return; // notification not supported for this characteristic
+        }
+
+        if (enable == characteristicsModelArrayList.
+                get(groupPosition).get(childPosition).
+                getNotificationChecked()){
+            return; // no state change
+        }
+
+        // State change: Notification-radio button is pushed down or up
+        // -> notifications are enabled or disabled.
+
+        ((MainActivity) requireActivity()).
+                btGatt.setCharacteristicNotification(characteristic, enable);
+
+        BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
+                UUID.fromString(CLIENT_CHARACTERISTIC_CONFIG));
+
+        if (descriptor != null){
+            //if (descriptor.getValue()==ENABLE_NOTIFICATION_VALUE)
+            if (enable){ descriptor.setValue(ENABLE_NOTIFICATION_VALUE); }
+            else{ descriptor.setValue(DISABLE_NOTIFICATION_VALUE); }
+
+            ((MainActivity) requireActivity()).btGatt.writeDescriptor(descriptor);
+        }
+
+        // change the state in the adapter
+        characteristicsModelArrayList.get(groupPosition).
+                get(childPosition).setNotificationChecked(enable);
+    }
+
+    // read/write/notify radio buttons
+    @SuppressLint("MissingPermission")
+    LvChildItemRbOnClickListener rwnRadioButtonOnClickListener =
+            (groupPosition, childPosition,
+             readChecked,
+             writeChecked,
+             notificationChecked) -> {
+
+        readStateHandler(groupPosition, childPosition, readChecked);
+        writeStateHandler(groupPosition, childPosition, writeChecked);
+        notificationStateHandler(groupPosition, childPosition, notificationChecked);
+    };
+
     // onClick-handler for triggering the read.
     // When some characteristics-item is clicked on ServicesExpandableList, content of the
     // attribute will be read from the remote device.
@@ -284,7 +389,7 @@ public class ConnectedFragment extends Fragment {
                             concat(editableValue).toLowerCase(Locale.ROOT); // e.g 'A' -> 'a'
                 }
                 else{
-                    nibbleString = editableValue;
+                    nibbleString = editableValue.toLowerCase(Locale.ROOT);
                 }
 
                 int nibbleLength = nibbleString.length();
@@ -294,8 +399,16 @@ public class ConnectedFragment extends Fragment {
 
                 byte outValueByte = 0;
                 boolean badInput = false;
-
-                for (int index = 0; index < nibbleLength; index++)
+                int index = 0;
+                // edited value:
+                // e.g. typed value in UI = "abcd" (Hexadecimal nibbles as ASCII-formatted)
+                // -> e.g. 'a' is index 0 in editableValue because it's typed first.
+                // 'b' is index 1 etc...
+                // Outcome should be: outValueBuff= [0xcd, 0xab]
+                // (0xcd in index 0), because 0xcd is actually LSB.
+                // So reverse_index is used for reversing the byte order:
+                int reverse_index = nibbleLength - 1;
+                for (; index < nibbleLength; index++, reverse_index--)
                 {
                     char nibbleAscii = nibbleString.charAt(index);
                     byte nibbleByte;
@@ -314,7 +427,7 @@ public class ConnectedFragment extends Fragment {
                     else{
                         nibbleString = ""; // clean edited value
                         badInput = true;
-                        Log.w(TAG, "Non-ascii value entered");
+
                         break;
                     }
 
@@ -323,7 +436,7 @@ public class ConnectedFragment extends Fragment {
                     }
                     else { // msb nibble
                         outValueByte = (byte) ( (byte) ((outValueByte << 4) & 0xf0) | nibbleByte);
-                        outValueBuff[index / 2] = outValueByte;
+                        outValueBuff[reverse_index / 2] = outValueByte;
                     }
                 }
 
@@ -355,6 +468,10 @@ public class ConnectedFragment extends Fragment {
                         }
                     }
                 }
+                else{
+                    Toast.makeText(this_context, "Non-hexadecimal value entered." +
+                            "Write new value in range [A...F] and [0...9].", Toast.LENGTH_LONG).show();
+                }
 
                 // update new value to the adapter
                 characteristicsModelArrayList.
@@ -366,19 +483,6 @@ public class ConnectedFragment extends Fragment {
             }
         }
         else if (notification_access_checked){
-            BluetoothGattCharacteristic characteristic =
-                    BtCharacteristicsArrayOfArrayList.get(groupPosition).
-                            get(childPosition);
-
-            ((MainActivity) requireActivity()).
-                    btGatt.setCharacteristicNotification(characteristic, true);
-
-            BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
-                    UUID.fromString(CLIENT_CHARACTERISTIC_CONFIG));
-            descriptor.setValue(ENABLE_NOTIFICATION_VALUE);
-
-            ((MainActivity) requireActivity()).btGatt.
-                    writeDescriptor(descriptor);
         }
     };
 
@@ -395,7 +499,8 @@ public class ConnectedFragment extends Fragment {
         // where on earth the listener is located...)
         expandableServicesAdapter = new ServicesExpandableListAdapter(this_context,
                 serviceModelArrayList, characteristicsModelArrayList,
-                readCharacteristicOnClickListener);
+                readCharacteristicOnClickListener,
+                rwnRadioButtonOnClickListener);
 
         servicesExpandableListView.setAdapter(expandableServicesAdapter);
 

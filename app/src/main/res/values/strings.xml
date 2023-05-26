@@ -16,4 +16,5 @@
     <string name="service_name">Unknown service name</string>
     <string name="service_uuid">Unknown UUID</string>
     <string name="connection_progressing">Progressing…</string>
+    <string name="hexadecimal">Hexadecimal</string>
 </resources>
