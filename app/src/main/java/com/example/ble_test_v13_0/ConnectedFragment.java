@@ -342,6 +342,82 @@ public class ConnectedFragment extends Fragment {
                 get(childPosition).setNotificationChecked(enable);
     }
 
+    public static class TypedValueChecked {
+        boolean badInput;
+        String nibbleString;
+        byte[] outValueBuff;
+    }
+
+    // Convert hexadecimal nibbles (ASCII-formatted) to integers (bytes)
+    // e.g. ['a','b','c','d'] -> [0xcd, 0xab]
+    public TypedValueChecked checkAndConvertTypedValue(String editedValue){
+
+        TypedValueChecked returnValue = new TypedValueChecked();
+
+        returnValue.badInput = false;
+
+        if ( (editedValue.length() % 2) != 0){
+            // adjust to even number of octets to do easier conversion
+            // e.g. 'abc' -> '0abc'
+            returnValue.nibbleString = "0".
+                    concat(editedValue).toLowerCase(Locale.ROOT); // e.g 'A' -> 'a'
+        }
+        else{
+            returnValue.nibbleString = editedValue.toLowerCase(Locale.ROOT);
+        }
+
+        int nibbleLength = returnValue.nibbleString.length();
+        int byteLength = nibbleLength / 2; // single octet contains two nibbles
+
+        returnValue.outValueBuff = new byte[byteLength];
+
+        byte outValueByte = 0;
+
+        int index = 0;
+        // edited value:
+        // e.g. typed value in UI = "abcd" (Hexadecimal nibbles as ASCII-formatted)
+        // -> e.g. 'a' is index 0 in editableValue because it's typed first.
+        // 'b' is index 1 etc...
+        // Outcome should be: outValueBuff= [0xcd, 0xab]
+        // (0xcd in index 0), because 0xcd is actually LSB.
+        // So reverse_index is used for reversing the byte order:
+        int reverse_index = nibbleLength - 1;
+        for (; index < nibbleLength; index++, reverse_index--)
+        {
+            char nibbleAscii = returnValue.nibbleString.charAt(index);
+            byte nibbleByte;
+
+            // Convert ASCII-formatted hexadecimal nibbles to integer
+
+            if ( (nibbleAscii >= '0') && (nibbleAscii <= '9'))
+            {
+                nibbleByte = (byte)(nibbleAscii - '0');
+            }
+            else if ( (nibbleAscii >= 'a') && (nibbleAscii <= 'f'))
+            {
+                nibbleByte = (byte)(nibbleAscii - 'a');
+                nibbleByte += 10; // e.g. a(hex) = 10(dec)
+            }
+            else{
+                returnValue.nibbleString = ""; // clean edited value
+                returnValue.badInput = true;
+
+                break;
+            }
+
+            if ((index % 2) == 0) { // lsb nibble
+                outValueByte = (byte) (nibbleByte & 0x0f);
+            }
+            else { // msb nibble
+                outValueByte = (byte) ( (byte) ((outValueByte << 4) & 0xf0) | nibbleByte);
+
+                returnValue.outValueBuff[reverse_index / 2] = outValueByte;
+            }
+        }
+
+        return returnValue;
+    }
+
     // read/write/notify radio buttons
     @SuppressLint("MissingPermission")
     LvChildItemRbOnClickListener rwnRadioButtonOnClickListener =
@@ -355,18 +431,19 @@ public class ConnectedFragment extends Fragment {
         notificationStateHandler(groupPosition, childPosition, notificationChecked);
     };
 
-    // onClick-handler for triggering the read.
-    // When some characteristics-item is clicked on ServicesExpandableList, content of the
-    // attribute will be read from the remote device.
+    // onClick-handler for ACKnowledge button.
+    // When ACK for some characteristics-item is clicked on ServicesExpandableList,
+    // content of the attribute will be read/write from/to the remote device depending on,
+    // which radio-button (read or write) is checked.
+    // If notification radio-button is checked, pressing ACK-button
+    // doesn't have any effect.
     @SuppressLint("MissingPermission")
     LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener =
         (groupPosition, childPosition,
          read_access_checked,
-         write_access_checked, editableValue,
+         write_access_checked, typedValue,
          notification_access_checked) -> {
-            //todo remove: System.out.println("Clicked: " + groupPosition +" | " + childPosition);
-//            System.out.println("read_checked: " + read_access_checked +
-//                    " | write_checked: " + write_access_checked);
+
         if (read_access_checked){
             ((MainActivity) requireActivity()).
                     btGatt.
@@ -375,72 +452,17 @@ public class ConnectedFragment extends Fragment {
                             get(childPosition));
         }
         else if (write_access_checked){
-            BluetoothGattCharacteristic characteristic =
-                    BtCharacteristicsArrayOfArrayList.get(groupPosition).
-                            get(childPosition);
+            if (typedValue != null){
+                // there is new value typed in UI for to be written to remote device
 
-            //todo: separate to new function
-            if (editableValue != null){
-                String nibbleString;
-                if ( (editableValue.length() % 2) != 0){
-                    // adjust to even number of octets to make nibble-to-byte conversion easier
-                    // e.g. 'abc' -> '0abc'
-                    nibbleString = "0".
-                            concat(editableValue).toLowerCase(Locale.ROOT); // e.g 'A' -> 'a'
-                }
-                else{
-                    nibbleString = editableValue.toLowerCase(Locale.ROOT);
-                }
+                BluetoothGattCharacteristic characteristic =
+                        BtCharacteristicsArrayOfArrayList.get(groupPosition).
+                                get(childPosition);
 
-                int nibbleLength = nibbleString.length();
-                int byteLength = nibbleLength / 2; // single octet contains two nibbles
+                // Check the validity of the value and convert ASCII-format to integer
+                TypedValueChecked typedValueChecked = checkAndConvertTypedValue(typedValue);
 
-                byte[] outValueBuff = new byte[byteLength];
-
-                byte outValueByte = 0;
-                boolean badInput = false;
-                int index = 0;
-                // edited value:
-                // e.g. typed value in UI = "abcd" (Hexadecimal nibbles as ASCII-formatted)
-                // -> e.g. 'a' is index 0 in editableValue because it's typed first.
-                // 'b' is index 1 etc...
-                // Outcome should be: outValueBuff= [0xcd, 0xab]
-                // (0xcd in index 0), because 0xcd is actually LSB.
-                // So reverse_index is used for reversing the byte order:
-                int reverse_index = nibbleLength - 1;
-                for (; index < nibbleLength; index++, reverse_index--)
-                {
-                    char nibbleAscii = nibbleString.charAt(index);
-                    byte nibbleByte;
-
-                    // Convert ASCII-formatted hexadecimal nibbles to integer
-
-                    if ( (nibbleAscii >= '0') && (nibbleAscii <= '9'))
-                    {
-                        nibbleByte = (byte)(nibbleAscii - '0');
-                    }
-                    else if ( (nibbleAscii >= 'a') && (nibbleAscii <= 'f'))
-                    {
-                        nibbleByte = (byte)(nibbleAscii - 'a');
-                        nibbleByte += 10; // e.g. a(hex) = 10(dec)
-                    }
-                    else{
-                        nibbleString = ""; // clean edited value
-                        badInput = true;
-
-                        break;
-                    }
-
-                    if ((index % 2) == 0) { // lsb nibble
-                        outValueByte = (byte) (nibbleByte & 0x0f);
-                    }
-                    else { // msb nibble
-                        outValueByte = (byte) ( (byte) ((outValueByte << 4) & 0xf0) | nibbleByte);
-                        outValueBuff[reverse_index / 2] = outValueByte;
-                    }
-                }
-
-                if (!badInput){
+                if (!typedValueChecked.badInput){
                     // If supported (hexadecimal) value, sent value to peripheral (server).
 
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
@@ -449,7 +471,7 @@ public class ConnectedFragment extends Fragment {
                         int retValue = ((MainActivity) requireActivity()).
                                 btGatt.writeCharacteristic
                                         (characteristic,
-                                        outValueBuff,
+                                        typedValueChecked.outValueBuff,
                                          //WRITE_TYPE_NO_RESPONSE, WRITE_TYPE_SIGNED ??
                                         BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
 
@@ -459,7 +481,7 @@ public class ConnectedFragment extends Fragment {
                     }
                     else{
                         // This method was deprecated in API level 33...
-                        characteristic.setValue(outValueBuff);
+                        characteristic.setValue(typedValueChecked.outValueBuff);
                         boolean retValue = ((MainActivity) requireActivity()).
                                 btGatt.writeCharacteristic(characteristic);
 
@@ -476,13 +498,13 @@ public class ConnectedFragment extends Fragment {
                 // update new value to the adapter
                 characteristicsModelArrayList.
                         get(groupPosition).
-                        get(childPosition).setCharacteristicsValue(nibbleString);
+                        get(childPosition).setCharacteristicsValue
+                                (typedValueChecked.nibbleString);
+
                 // and notify the adapter for updating the view
                 ((BaseExpandableListAdapter)
                         expandableServicesAdapter).notifyDataSetChanged();
             }
-        }
-        else if (notification_access_checked){
         }
     };
 

@@ -262,105 +262,30 @@ public class ScanningFragment extends Fragment {
         }
     }
 
-    public static class BTDevicesRecyclerViewAdapter extends RecyclerView.Adapter<BTDevicesRecyclerViewAdapter.ViewHolder> {
+    // OnClickListener for RecyclerView adapter
+    RVItemDeviceOnClickListener rVItemDeviceOnClickListener =
+        position -> {
+    };
 
-        private ArrayList<DeviceModel> DeviceModelArrayList;
-        public Context context;
-        final private RVItemDeviceOnClickListener onClickListener;
+    // OnLongClickListener for RecyclerView adapter
+    RVItemDeviceOnLongClickListener rVItemDeviceOnLongClickListener =
+        position -> {
+        // Selected device item is clicked.
+        // Start to connect to remote device using
+        // MAC-address of device-item.
+        if (position != RecyclerView.NO_POSITION){
+            DeviceModel deviceItem = mDevices.get(position);
 
-        final private RVItemDeviceOnLongClickListener longClickListener;
+            // set selected BT-device
+            ((MainActivity) requireActivity()).
+                    setMyBTDevice(deviceItem.getBTDeviceAddress());
 
-        public BTDevicesRecyclerViewAdapter(ArrayList<DeviceModel> DeviceList,
-                                            RVItemDeviceOnClickListener onClickListener,
-                                            RVItemDeviceOnLongClickListener onLongClickListener,
-                                            Context context) {
-            this.DeviceModelArrayList = DeviceList;
-            this.context = context;
-            this.onClickListener = onClickListener;
-            this.longClickListener = onLongClickListener;
+            // trigger connection establishment for selected BT-device
+            ((MainActivity) requireActivity()).
+                    HandleBleConnection(BT_CONNECTION_STATE.CONNECTING);
         }
-
-        @NonNull
-        @Override
-        public BTDevicesRecyclerViewAdapter.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View view;
-            Context context = parent.getContext();
-            LayoutInflater inflater = LayoutInflater.from(context);
-
-            // Inflate the custom layout
-            view = inflater.inflate(R.layout.recycle_device_item_view, parent, false);
-            System.out.println("onCreateViewHolder RV");
-            return new BTDevicesRecyclerViewAdapter.ViewHolder(view);
-        }
-
-        public class ViewHolder extends RecyclerView.ViewHolder
-                implements View.OnClickListener, View.OnLongClickListener
-        {
-            private final TextView deviceAddress;
-            private final TextView deviceName;
-            //private final TextView deviceSignal;
-
-            public ViewHolder(View view) {
-                super(view);
-
-                // Define click listener for the ViewHolder's View
-                view.setOnClickListener(this);
-                view.setOnLongClickListener(this);
-
-                deviceAddress = view.findViewById(R.id.device_mac_address);
-                deviceName = view.findViewById(R.id.device_name);
-            }
-
-            @Override
-            public void onClick(View v) {
-                int position = getBindingAdapterPosition();
-
-                if (position > RecyclerView.NO_POSITION) {
-                    onClickListener.onClick(position);
-                }
-            }
-
-            @Override
-            public boolean onLongClick(View v) {
-                int position = getBindingAdapterPosition();
-
-                if (position > RecyclerView.NO_POSITION) {
-                    return longClickListener.onLongClick(position);
-                }
-                return false;
-            }
-
-            public TextView getDeviceAddress() {
-                return deviceAddress;
-            }
-            public TextView getDeviceName() {
-                return deviceName;
-            }
-        }
-
-        @Override
-        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-            // Get element from your dataset at this position and replace the
-            // contents of the view with that element
-            if (this.DeviceModelArrayList != null){
-                DeviceModel deviceItem = DeviceModelArrayList.get(position);
-                holder.getDeviceAddress().
-                        setText(deviceItem.getBTDeviceAddress().toString());
-
-                holder.getDeviceName().
-                        setText(deviceItem.getBTDeviceName());
-            }
-        }
-
-        @Override
-        public int getItemCount() {
-            if (this.DeviceModelArrayList == null){
-                return 0;
-            }
-            return this.DeviceModelArrayList.size();
-        }
-    }
-
+        return true;
+    };
 
     private void createBTDevicesInRecyclerViewAdapter(){
         // Show BT devices in RecyclerView type of List view:
@@ -368,37 +293,6 @@ public class ScanningFragment extends Fragment {
         devicesRecyclerView.setHasFixedSize(false);
 
         RecyclerView.LayoutManager deviceLayoutManager = new LinearLayoutManager(this_context, LinearLayoutManager.VERTICAL, false);
-
-        // Applying OnClickListener to RecyclerView adapter
-        RVItemDeviceOnClickListener rVItemDeviceOnClickListener=
-                new RVItemDeviceOnClickListener() {
-
-                    public void onClick(int position) {
-                    }
-                };
-
-        // Applying OnClickListener to RecyclerView adapter
-        RVItemDeviceOnLongClickListener rVItemDeviceOnLongClickListener=
-                new RVItemDeviceOnLongClickListener() {
-
-                    public boolean onLongClick(int position) {
-                        // Selected device item is clicked.
-                        // Start to connect to remote device using
-                        // MAC-address of device-item.
-                        if (position != RecyclerView.NO_POSITION){
-                            DeviceModel deviceItem = mDevices.get(position);
-
-                            // set selected BT-device
-                            ((MainActivity) requireActivity()).
-                                    setMyBTDevice(deviceItem.getBTDeviceAddress());
-
-                            // trigger connection establishment for selected BT-device
-                            ((MainActivity) requireActivity()).
-                                    HandleBleConnection(BT_CONNECTION_STATE.CONNECTING);
-                        }
-                        return true;
-                    }
-                };
 
         devicesAdapter = new BTDevicesRecyclerViewAdapter(mDevices,
                 rVItemDeviceOnClickListener,
