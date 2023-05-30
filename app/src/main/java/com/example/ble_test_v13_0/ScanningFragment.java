@@ -24,7 +24,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ProgressBar;
-import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Objects;
@@ -63,7 +62,16 @@ public class ScanningFragment extends Fragment {
 
     private RecyclerView.Adapter devicesAdapter;
 
-    ArrayList<BluetoothDevice> mLeDevices = new ArrayList<>();
+    // mDeviceAddresses contains addresses (unique string-formatted 48-bit address)
+    // for detected devices. This is excellent key for selecting corresponding device from
+    // DeviceModel-list (mdevices).
+    // Notice that even though these two lists could be combined also to Hashmap,
+    // selecting of the device to be connected is index-based, not key-based
+    // (see RVItemDeviceOnLongClickListener). Well, LinkedHashMap could be used...
+    // But let's implement two separate lists, where it's trivial to find corresponding
+    // device by index from mDevices-list.
+
+    ArrayList<String> mDeviceAddresses = new ArrayList<>();
     ArrayList<DeviceModel> mDevices = new ArrayList<>();
 
     public ScanningFragment() {
@@ -163,14 +171,13 @@ public class ScanningFragment extends Fragment {
                 @Override
                 public void onScanResult(int callbackType, ScanResult result) {
                     super.onScanResult(callbackType, result);
-                    addDevice(result); // add device-details to RecyclerView List adapter
+                    // Add new device to RecyclerView List adapter,
+                    // or modify existing device by RSSI or logical name
+                    // (if name was not available on first scan-result for this device)
+                    addOrModifyDevice(result);
 
                     BluetoothDevice device = result.getDevice();
                     int signal = result.getRssi();
-
-                    System.out.println("BT address: " + device + " | name: " +
-                            device.getName() +
-                            " | rssi: " + signal); //todo
                 }
             };
 
@@ -189,9 +196,9 @@ public class ScanningFragment extends Fragment {
             scanningProgressBar.setVisibility(VISIBLE);
 
             // start scanning by cleaning device-list
-            if (mLeDevices != null){
-                int deviceCnt = mLeDevices.size();
-                mLeDevices.clear();
+            if (mDeviceAddresses != null){
+                int deviceCnt = mDeviceAddresses.size();
+                mDeviceAddresses.clear();
                 mDevices.clear();
                 devicesAdapter.notifyItemRangeRemoved(0, deviceCnt);
 
@@ -238,27 +245,50 @@ public class ScanningFragment extends Fragment {
     // BLUETOOTH_CONNECT permission.
     // Runtime permission is actually checked&granted earlier...
     @SuppressLint("MissingPermission")
-    public void addDevice(ScanResult result) {
+    public void addOrModifyDevice(ScanResult result) {
         String deviceName;
+
+        if ( (result == null) || (result.getDevice() == null) ||
+                (result.getDevice().getAddress() == null) ) {
+            return;
+        }
+
         if (result.getDevice().getName() == null){
             deviceName = "Unknown";
         }
         else{
             deviceName = result.getDevice().getName();
         }
+
         DeviceModel device =
                 new DeviceModel(result.getDevice(),
                         deviceName,
                         result.getRssi());
 
-        if( ( (mLeDevices == null) && (mDevices == null) ) ||
-                (!Objects.requireNonNull(mLeDevices).contains(device.getBTDeviceAddress()))) {
+        int deviceIndex = -1;
 
-            mLeDevices.add(device.getBTDeviceAddress());
+        if( ( (mDeviceAddresses == null) && (mDevices == null) )
+                              ||
+               ( ( deviceIndex = Objects.requireNonNull(mDeviceAddresses).
+                       indexOf(result.getDevice().getAddress()) ) < 0 )
+        ) {
+            // new device detected
+
+            // NullPointerException-warning for add-method appeared without this duplicate check
+            if(mDeviceAddresses == null) { return; }
+
+            mDeviceAddresses.add(result.getDevice().getAddress());
             mDevices.add(device);
 
             // added as last item, so notify the adapter for change of the last item
             devicesAdapter.notifyItemInserted(mDevices.size() - 1 );
+        }
+
+        if ( (deviceIndex >= 0) && (deviceIndex < mDevices.size()) ){
+            // existing device detected
+            mDevices.set(deviceIndex, device);
+            // notify the adapter for modification of the last item
+            devicesAdapter.notifyItemChanged(deviceIndex);
         }
     }
 

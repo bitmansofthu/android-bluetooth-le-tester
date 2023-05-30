@@ -14,11 +14,11 @@ import java.util.ArrayList;
 
 public class BTDevicesRecyclerViewAdapter extends RecyclerView.Adapter<BTDevicesRecyclerViewAdapter.ViewHolder> {
 
-    private ArrayList<DeviceModel> DeviceModelArrayList;
-    public Context context;
-    final private RVItemDeviceOnClickListener onClickListener;
+    private final ArrayList<DeviceModel> DeviceModelArrayList;
+    public Context context; // private ?
+    private final RVItemDeviceOnClickListener onClickListener;
 
-    final private RVItemDeviceOnLongClickListener longClickListener;
+    private final RVItemDeviceOnLongClickListener longClickListener;
 
     public BTDevicesRecyclerViewAdapter(ArrayList<DeviceModel> DeviceList,
                                         RVItemDeviceOnClickListener onClickListener,
@@ -39,7 +39,6 @@ public class BTDevicesRecyclerViewAdapter extends RecyclerView.Adapter<BTDevices
 
         // Inflate the custom layout
         view = inflater.inflate(R.layout.recycle_device_item_view, parent, false);
-        System.out.println("onCreateViewHolder RV");
         return new BTDevicesRecyclerViewAdapter.ViewHolder(view);
     }
 
@@ -48,7 +47,7 @@ public class BTDevicesRecyclerViewAdapter extends RecyclerView.Adapter<BTDevices
     {
         private final TextView deviceAddress;
         private final TextView deviceName;
-        //private final TextView deviceSignal;
+        private final TextView deviceSignal;
 
         public ViewHolder(View view) {
             super(view);
@@ -57,8 +56,9 @@ public class BTDevicesRecyclerViewAdapter extends RecyclerView.Adapter<BTDevices
             view.setOnClickListener(this);
             view.setOnLongClickListener(this);
 
-            deviceAddress = view.findViewById(R.id.device_mac_address);
-            deviceName = view.findViewById(R.id.device_name);
+            this.deviceAddress = view.findViewById(R.id.device_mac_address);
+            this.deviceName = view.findViewById(R.id.device_name);
+            this.deviceSignal = view.findViewById(R.id.device_signal_level);
         }
 
         @Override
@@ -81,24 +81,33 @@ public class BTDevicesRecyclerViewAdapter extends RecyclerView.Adapter<BTDevices
         }
 
         public TextView getDeviceAddress() {
-            return deviceAddress;
+            return this.deviceAddress;
         }
         public TextView getDeviceName() {
-            return deviceName;
+            return this.deviceName;
         }
+
+        public TextView getDeviceSignalLevel() {
+            return this.deviceSignal;
+        }
+
     }
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        // Get element from your dataset at this position and replace the
-        // contents of the view with that element
         if (this.DeviceModelArrayList != null){
+            // Get element from adapter's dataset at this position and replace the
+            // contents of the view with that element
+
             DeviceModel deviceItem = DeviceModelArrayList.get(position);
             holder.getDeviceAddress().
                     setText(deviceItem.getBTDeviceAddress().toString());
 
             holder.getDeviceName().
                     setText(deviceItem.getBTDeviceName());
+
+            String signalLevel = deviceItem.getSignalLevel() + " dBm";
+            holder.getDeviceSignalLevel().setText(signalLevel);
         }
     }
 

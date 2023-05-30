@@ -199,7 +199,8 @@ public class ConnectedFragment extends Fragment {
                     gattService.getCharacteristics();
 
             String serviceName = ((MainActivity) requireActivity()).
-                    reserved_uuid_lookup(gattService.getUuid().toString().toLowerCase(Locale.ROOT));
+                    reserved_uuid_lookup(gattService.getUuid().
+                            toString().toLowerCase(Locale.ROOT));
 
             String serviceUuid = gattService.getUuid().toString();
 
@@ -217,7 +218,8 @@ public class ConnectedFragment extends Fragment {
             for (BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
 
                 String characteristicsName = ((MainActivity) requireActivity()).
-                        reserved_uuid_lookup(gattCharacteristic.getUuid().toString().toLowerCase(Locale.ROOT));
+                        reserved_uuid_lookup(gattCharacteristic.getUuid().
+                                toString().toLowerCase(Locale.ROOT));
 
                 String characteristicsUuid = gattCharacteristic.getUuid().toString();
 

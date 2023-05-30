@@ -18,4 +18,5 @@
     <string name="service_uuid">uuid</string>
     <string name="connection_progressing">Progressing…</string>
     <string name="hexadecimal">Hexadecimal</string>
+    <string name="rssi">signal</string>
 </resources>
