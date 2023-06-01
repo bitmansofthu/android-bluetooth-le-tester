@@ -15,6 +15,7 @@ import android.os.Build;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.fragment.app.Fragment;
 
 import android.util.Log;
@@ -332,11 +333,27 @@ public class ConnectedFragment extends Fragment {
                 UUID.fromString(CLIENT_CHARACTERISTIC_CONFIG));
 
         if (descriptor != null){
-            //if (descriptor.getValue()==ENABLE_NOTIFICATION_VALUE)
-            if (enable){ descriptor.setValue(ENABLE_NOTIFICATION_VALUE); }
-            else{ descriptor.setValue(DISABLE_NOTIFICATION_VALUE); }
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU){
+                // API level < v33 (OS ver < 13), deprecated in v33...
+                if ( enable){
+                    descriptor.setValue(ENABLE_NOTIFICATION_VALUE);
+                }
+                else{
+                    descriptor.setValue(DISABLE_NOTIFICATION_VALUE);
+                }
 
-            ((MainActivity) requireActivity()).btGatt.writeDescriptor(descriptor);
+                ((MainActivity) requireActivity()).btGatt.writeDescriptor(descriptor);
+            }else{
+                // API level >= v33 (OS ver >= 13)
+                if ( enable){
+                    ((MainActivity) requireActivity()).btGatt.
+                            writeDescriptor(descriptor, ENABLE_NOTIFICATION_VALUE);
+                }
+                else{
+                    ((MainActivity) requireActivity()).btGatt.
+                            writeDescriptor(descriptor, DISABLE_NOTIFICATION_VALUE);
+                }
+            }
         }
 
         // change the state in the adapter
@@ -468,7 +485,7 @@ public class ConnectedFragment extends Fragment {
                     // If supported (hexadecimal) value, sent value to peripheral (server).
 
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
-                        // SDK >=v33 (OS ver.13)
+                        // API level >=v33 (OS ver >= 13)
 
                         int retValue = ((MainActivity) requireActivity()).
                                 btGatt.writeCharacteristic

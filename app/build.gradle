@@ -8,7 +8,7 @@ android {
 
     defaultConfig {
         applicationId "com.example.ble_test_v13_0"
-        minSdk 32
+        minSdk 26
         targetSdk 33
         versionCode 1
         versionName "1.0"

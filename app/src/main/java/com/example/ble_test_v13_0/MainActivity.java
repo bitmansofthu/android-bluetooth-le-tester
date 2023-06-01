@@ -1,6 +1,7 @@
 package com.example.ble_test_v13_0;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -16,6 +17,7 @@ import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -34,6 +36,7 @@ import static android.content.ContentValues.TAG;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Locale;
@@ -118,17 +121,21 @@ public class MainActivity extends AppCompatActivity {
             // is set to true, condition above is probably quite useless.
             // Installation of this application in HW not supporting Low Energy BT (>= Ble v4.0)
             // is not allowed...
-            Toast.makeText(this, "BLE not supported!", Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
-        if (!btAdapter.isEnabled()) {
-            Toast.makeText(MainActivity.this, "Bluetooth not enabled! Enable it from Settings.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "BLE not supported!", Toast.LENGTH_LONG).show();
             finish();
             return;
         }
 
-        checkAndRequestPermissions(); // validate BT SCAN/CONNECT permissions
+        if (!btAdapter.isEnabled()) {
+            Toast.makeText(MainActivity.this, "Bluetooth not enabled! Enable it from Settings.",
+                    Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S){
+            checkAndRequestRuntimePermissions(); // validate BT SCAN/CONNECT permissions
+        }
 
         // Settings for Connecting-dialog
         createProgressSpinnerForConnectingAlertDialog();
@@ -241,7 +248,6 @@ public class MainActivity extends AppCompatActivity {
                             uuid_16_bit = uuid_16_bit.toLowerCase(Locale.ROOT);
 
                             list_item++;
-                            //Log.w(TAG, "UUID: " + uuid_16_bit);
                         }
                         else{
                             // List indicator '-' not found on row, where it should be located.
@@ -295,7 +301,6 @@ public class MainActivity extends AppCompatActivity {
                         reserved_uuids_with_description.put(uuid_128_bit_reserved, descriptive_name);
 
                         list_item = 0; // next line should start new list-item
-                        //Log.w(TAG, "service_id: " + service_id);
                     }
                 }
                 line_nbr++;
@@ -346,14 +351,21 @@ public class MainActivity extends AppCompatActivity {
 
     private void showScanConnectRuntimePermissionMessage(DialogInterface.OnClickListener okListener) {
         new AlertDialog.Builder(MainActivity.this)
-                .setMessage("You will next need to allow permissions for finding Bluetooth Low Energy devices from neighbourhood, and connecting to the selected device. Seriously, if you now deny permissions, you will need to uninstall and install BLE tester application again to proceed for allowing permissions next time, and start to use the application. BLE tester is totally useless application without desired runtime permissions, and will stop running...")
+                .setMessage("You will next need to allow permissions for finding Bluetooth Low Energy" +
+                        "devices from neighbourhood, and connecting to the selected device." +
+                        "Seriously, if you now deny permissions, you will need to uninstall and " +
+                        "install BLE tester application again to proceed for allowing permissions next" +
+                        "time, and start to use the application. BLE tester is totally useless" +
+                        "application without desired runtime permissions, and will stop running...")
                 .setPositiveButton("I understand", okListener)
                 .create()
                 .show();
     }
 
-    // Function to check and request permission.
-    public void checkAndRequestPermissions() {
+    // Function to check and request runtime permissions for SCAN/CONNECT
+    // These runtime permissions are needed after Android 12 (API >= v31)
+    @RequiresApi(api = Build.VERSION_CODES.S)
+    public void checkAndRequestRuntimePermissions() {
         String[] permissions = {BLUETOOTH_SCAN, BLUETOOTH_CONNECT};
 
         // Check and request the missing permissions, and then override
@@ -382,11 +394,13 @@ public class MainActivity extends AppCompatActivity {
         // returns true, and Rationale helper-dialog (showScanConnectRuntimePermissionMessage) is shown
         // before requesting permissions again.
         // This is the second (and last) chance to permit to use the application.
-        // Next restarts will fall down to requestPermissions() (see last else), because shouldShowRequestPermissionRationale
-        // starts to return false.
+        // Next restarts will fall down to requestPermissions() (see last else),
+        // because shouldShowRequestPermissionRationale starts to return false.
         // Now Android-OS doesn't show any permission-dialog anymore. We are in 'Don't ask anymore' state.
-        // Some earlier OS-versions included 'Don't ask anymore' selection, but nowadays OS decides automatically behalf of the user...
-        // Application will close in any new attempts. Only uninstall/install application and starting the procedure again helps...
+        // Some earlier OS-versions included 'Don't ask anymore' selection, but nowadays OS decides
+        // automatically behalf of the user...
+        // Application will close in any new attempts. Only uninstall/install application and starting
+        // the procedure again helps...
 
         else if (shouldShowRequestPermissionRationale(BLUETOOTH_SCAN) &&
                  shouldShowRequestPermissionRationale(BLUETOOTH_CONNECT)) {
@@ -423,17 +437,21 @@ public class MainActivity extends AppCompatActivity {
             connectionAccepted = (grantResults[1] == PackageManager.PERMISSION_GRANTED);
 
             if ( scanAccepted) {
-                Toast.makeText(MainActivity.this, "BT SCAN Permission Granted", Toast.LENGTH_SHORT) .show();
+                Toast.makeText(MainActivity.this, "BT SCAN Permission Granted",
+                        Toast.LENGTH_SHORT) .show();
             }
             else {
-                Toast.makeText(MainActivity.this, "BT SCAN Permission Denied", Toast.LENGTH_SHORT) .show();
+                Toast.makeText(MainActivity.this, "BT SCAN Permission Denied",
+                        Toast.LENGTH_SHORT) .show();
             }
 
             if ( connectionAccepted) {
-                Toast.makeText(MainActivity.this, "BT CONNECTION Permission Granted", Toast.LENGTH_SHORT) .show();
+                Toast.makeText(MainActivity.this, "BT CONNECTION Permission Granted",
+                        Toast.LENGTH_SHORT) .show();
             }
             else {
-                Toast.makeText(MainActivity.this, "BT CONNECTION Permission Denied", Toast.LENGTH_SHORT) .show();
+                Toast.makeText(MainActivity.this, "BT CONNECTION Permission Denied",
+                        Toast.LENGTH_SHORT) .show();
             }
         }
         else {
@@ -442,7 +460,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (!scanAccepted && !connectionAccepted){
-            Toast.makeText(MainActivity.this, "You need to allow permissions for finding (scan) and connecting Bluetooth-devices", Toast.LENGTH_LONG) .show();
+            Toast.makeText(MainActivity.this, "You need to allow permissions for finding (scan) and connecting Bluetooth-devices",
+                    Toast.LENGTH_LONG) .show();
             Toast.makeText(MainActivity.this, "Start BLE tester again!", Toast.LENGTH_LONG) .show();
 
             finish(); // No sense to continue. Finish the application.
@@ -460,8 +479,6 @@ public class MainActivity extends AppCompatActivity {
                 // disconnected from the GATT Server
                 HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTED);
             }
-            //todo
-            System.out.println("BluetoothGattCallback: new state " + newState+ "| status: " + status);
         }
 
         @Override
@@ -491,7 +508,7 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> ((ConnectedFragment) Objects.requireNonNull
                         (fm.findFragmentByTag("CONNECTION"))).GattServicesDiscovered());
             } else {
-                Log.w(TAG, "onServicesDiscovered status: " + status);
+                Log.w(TAG, "onServicesDiscovered not successful. Status: " + status);
             }
         }
 
@@ -508,7 +525,7 @@ public class MainActivity extends AppCompatActivity {
                         GattCharacteristicsValueReceived(characteristic,
                                 characteristic.getValue()));
             } else {
-                Log.w(TAG, "onCharacteristicRead status: " + status);
+                Log.w(TAG, "onCharacteristicRead failed. Status: " + status);
             }
         }
 
@@ -526,7 +543,7 @@ public class MainActivity extends AppCompatActivity {
                         (fm.findFragmentByTag("CONNECTION"))). //todo: CONNECTION -> const
                         GattCharacteristicsValueReceived(characteristic, value));
             } else {
-                Log.w(TAG, "onCharacteristicRead status: " + status);
+                Log.w(TAG, "onCharacteristicRead failed. Status: " + status);
             }
         }
 
@@ -544,7 +561,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // Callback triggered as a result of a remote characteristic notification.
-        // This method was deprecated in API level 33.
+        // This method was deprecated in API level 33 (OS v13).
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt,
                                             BluetoothGattCharacteristic characteristic){
@@ -571,6 +588,16 @@ public class MainActivity extends AppCompatActivity {
         }
 
     };
+
+
+    static boolean refreshDeviceCache(BluetoothGatt gatt) {
+        try {//from  w w  w.ja  v  a 2  s  . c om
+            Method localMethod = gatt.getClass().getMethod("refresh");
+            return (boolean) (Boolean) localMethod.invoke(gatt, new Object[0]);
+        } catch (Exception ignored) {
+        }
+        return false;
+    }
 
     @SuppressLint("MissingPermission")
     // MissingPermission here just to avoid warnings. Runtime permission for BT_CONNECT
@@ -608,7 +635,11 @@ public class MainActivity extends AppCompatActivity {
 
                 btGatt = getMyBTDevice().connectGatt(MainActivity.this,
                         false, gattCallback,TRANSPORT_LE);
-
+/*
+// clean GATT-services/characteristics stored locally on cache-file
+                boolean refresh = refreshDeviceCache(btGatt);
+                Log.w(TAG, "Cache refreshed: " + refresh);
+*/
             }
         }
         else if (stateChange == BT_CONNECTION_STATE.CONNECTED){
@@ -639,7 +670,8 @@ public class MainActivity extends AppCompatActivity {
                 ft = fm.beginTransaction();
                 ft
                     .setReorderingAllowed(true)
-                    .replace(R.id.fragment_container_view, ConnectedFragment.class, null, "CONNECTION")
+                    .replace(R.id.fragment_container_view, ConnectedFragment.class, null,
+                            "CONNECTION")
                     .commit();
             });
         }
@@ -655,14 +687,16 @@ public class MainActivity extends AppCompatActivity {
             else {
                 // Disconnect (by timeout) before the connection is established.
                 mConnectionState = BT_CONNECTION_STATE.NOT_SCANNING;
-                System.out.println("Failed to connect to remote device. Canceled by timeout."); //todo: -> LOG!!
+                Log.w(TAG, "Failed to connect to remote device. Canceled by timeout.");
 
                 runOnUiThread(() -> {
                     dialogConnecting.hide();
-                    Toast.makeText(MainActivity.this, "Failed to connect to the remote device!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "Failed to connect to the remote device!",
+                            Toast.LENGTH_SHORT).show();
 
                     if (btGatt != null){
-                        // Close gatt-interface (if there is any interface available anymore). BT-interface might be stuck.
+                        // Close gatt-interface (if there is any interface available anymore).
+                        // BT-interface might be stuck.
                         btGatt.close();
                     }
 
@@ -673,7 +707,8 @@ public class MainActivity extends AppCompatActivity {
         else if (stateChange == BT_CONNECTION_STATE.DISCONNECTED){
             if (mConnectionState == BT_CONNECTION_STATE.DISCONNECTING){
                 // Normal local disconnecting to the remote device succeeded:
-                // CONNECTED -> DISCONNECTING-event -> DISCONNECTING -> DISCONNECTED-event (when using DISCONNECT-button).
+                // CONNECTED -> DISCONNECTING-event -> DISCONNECTING -> DISCONNECTED-event
+                // (when using DISCONNECT-button).
 
                 btGatt.close();
 
@@ -709,15 +744,14 @@ public class MainActivity extends AppCompatActivity {
                 //    its views.
                 runOnUiThread(() -> {
                     dialogConnecting.hide();
-                    Toast.makeText(MainActivity.this, "Failed to connect to the remote device!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "Failed to connect to the remote device!",
+                            Toast.LENGTH_SHORT).show();
                 });
 
             }
 
             mConnectionState = BT_CONNECTION_STATE.NOT_SCANNING;
         }
-
-        System.out.println("State: " + mConnectionState); //todo: remove
     }
 
 }
