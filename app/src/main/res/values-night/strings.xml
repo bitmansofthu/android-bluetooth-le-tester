@@ -13,7 +13,6 @@
     <string name="characteristics_write_access">Write</string>
     <string name="characteristics_notify_access">Notify</string>
     <string name="characteristics_value">value</string>
-    <string name="characteristics_acknowledge_action">ACK</string>
     <string name="service_name">SERVICE</string>
     <string name="service_uuid">uuid</string>
     <string name="connection_progressing">Progressing…</string>
@@ -21,4 +20,5 @@
     <string name="rssi">signal</string>
     <string name="characteristic_confirm_request">Request</string>
     <string name="characteristic_confirm_write">Send</string>
+    <string name="spinnerDropDownValueFormatTitle">Format</string>
 </resources>

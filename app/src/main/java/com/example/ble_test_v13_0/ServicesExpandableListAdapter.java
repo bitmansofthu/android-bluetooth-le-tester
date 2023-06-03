@@ -2,17 +2,21 @@ package com.example.ble_test_v13_0;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.BaseExpandableListAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -24,7 +28,12 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     private final ArrayList<ArrayList<CharacteristicsModel>> childArrayList;
     private final LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener;
     private final LvChildItemRbOnClickListener rwnRadioButtonOnClickListener;
+
+    private final LvChildItemFormatSpinnerOnItemSelected formatSpinnerOnItemSelected;
     private String editableValue;
+
+    private final String[] mSpinnerFormatItems =
+            new String[]{"HEXA", "+-INT", "+INT", "ASCII", "FLOAT", "5", "6", "7", "8", "9"};
 
     // View lookup cache (view holders for parents and corresponding children for each parent)
     private static class ViewHolderParent {
@@ -42,17 +51,20 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
         RadioButton radioButtonReadAccess;
         RadioButton radioButtonWriteAccess;
         RadioButton radioButtonNotifyAccess;
+        Spinner spinnerFormatSelection;
     }
 
     public ServicesExpandableListAdapter(Context context, ArrayList<ServiceModel> groupArrayList,
                                          ArrayList<ArrayList<CharacteristicsModel>> childArrayList,
                                          LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener,
-                                         LvChildItemRbOnClickListener rwnRadioButtonOnClickListener) {
+                                         LvChildItemRbOnClickListener rwnRadioButtonOnClickListener,
+                                         LvChildItemFormatSpinnerOnItemSelected formatSpinnerOnItemSelected) {
         this.context = context;
         this.groupArrayList = groupArrayList;
         this.childArrayList = childArrayList;
         this.readCharacteristicOnClickListener = readCharacteristicOnClickListener;
         this.rwnRadioButtonOnClickListener = rwnRadioButtonOnClickListener;
+        this.formatSpinnerOnItemSelected = formatSpinnerOnItemSelected;
         editableValue = "";
     }
     @Override
@@ -63,9 +75,11 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     @Override
     public int getChildrenCount(int groupPosition) {
         if (this.childArrayList.get(groupPosition) != null){
+            //System.out.println("getChildrenCount: " + this.childArrayList.get(groupPosition).size());
             return (this.childArrayList.get(groupPosition).size());
         }
         else {
+            //System.out.println("getChildrenCount = 0"); //todo
             return 0;
         }
     }
@@ -87,6 +101,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
 
     @Override
     public long getChildId(int groupPosition, int childPosition) {
+        //System.out.println("getChildId = " + childPosition);
         return childPosition;
     }
 
@@ -167,6 +182,13 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
             viewHolderChild.radioButtonWriteAccess = rowView.findViewById(R.id.radioButtonWrite);
             viewHolderChild.radioButtonNotifyAccess = rowView.findViewById(R.id.radioButtonNotification);
 
+            viewHolderChild.spinnerFormatSelection = rowView.
+                    findViewById(R.id.spinnerDropDownValueFormat);
+
+            ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(this.context,
+                    android.R.layout.simple_list_item_1, mSpinnerFormatItems);
+            viewHolderChild.spinnerFormatSelection.setAdapter(spinnerAdapter);
+
             viewHolderChild.CharReadExpandedView = rowView.
                     findViewById(R.id.read_characteristics_value);
 
@@ -174,8 +196,13 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
                     findViewById(R.id.characteristic_value);
 
             rowView.setTag(viewHolderChild); // Cache the viewHolder object inside the fresh view
+
+            //System.out.println("getChildView, convertView == NULL:" +
+            //        groupPosition + " / " + childPosition + " / " + isLastChild);
         }
         else {
+            //System.out.println("getChildView, convertView !== NULL:" +
+//                    groupPosition + " / " + childPosition + " / " + isLastChild);
             rowView = convertView;
             // View is being recycled, retrieve the viewHolder object from tag
             viewHolderChild = (ViewHolderChild) rowView.getTag();
@@ -218,6 +245,24 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
         viewHolderChild.radioButtonNotifyAccess.setOnClickListener(v ->
                 rwnRadioButtonOnClickListener.onClick(groupPosition, childPosition,
                 false, false, true));
+
+        viewHolderChild.spinnerFormatSelection.
+            setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                // view: view within the spinner-adapter
+                // position: the position of the view in the adapter
+                // id: the row id of the item that is selected
+                // position and id seems to contain same value in our spinner-setup
+                // -> use position as selected list index of the spinner drop-down list
+                formatSpinnerOnItemSelected.onItemSelected(groupPosition, childPosition, position);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
+
 
         viewHolderChild.CharValueExpandedView.addTextChangedListener(new TextWatcher() {
             @Override
@@ -262,6 +307,8 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
 
         viewHolderChild.CharValueExpandedView.setText(characteristic.getCharacteristicsValue());
 
+        viewHolderChild.spinnerFormatSelection.setSelection(characteristic.getFormat());
+
         if (characteristic.getReadChecked())
         {
             if (!viewHolderChild.radioButtonReadAccess.isChecked()){
@@ -272,6 +319,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
                     View.INVISIBLE){
                 viewHolderChild.CharReadExpandedView.setVisibility(View.VISIBLE);
             }
+
             viewHolderChild.CharReadExpandedView.setText
                     (R.string.characteristic_confirm_request);
         }
@@ -306,7 +354,9 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
 
     @Override
     public boolean isChildSelectable(int groupPosition, int childPosition) {
-        return true;
+        //System.out.println("isChildSelectable, group/child: "
+//                + groupPosition +"/" + childPosition);
+        return true; // what about returning false????
     }
 
 }

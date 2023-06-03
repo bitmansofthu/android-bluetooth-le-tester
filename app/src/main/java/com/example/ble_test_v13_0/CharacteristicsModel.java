@@ -19,7 +19,9 @@ public class CharacteristicsModel {
     private final BitSet writeAccess; // state of radioButton-write
     private final BitSet notificationAccess; // state of radioButton-notify
 
-    // Acknowledge-parameter (for ACK-button) in such is useless here,
+    private int format; // selected format (unsigned integer8, string etc.)
+
+    // Acknowledge-parameter (for Confirmation-button for Read-request/Send) in such is useless here,
     // but important for giving correct amount of UI-components
     // (see ServicesExpandableListAdapter:getChildrenCount)
     private final boolean acknowledge;
@@ -31,12 +33,14 @@ public class CharacteristicsModel {
                                 boolean readAccess,
                                 boolean writeAccess,
                                 boolean notificationAccess,
-                                boolean acknowledge) {
+                                int format, boolean acknowledge) {
         this.characteristicsUUID = characteristicsUUID;
         this.characteristicsName = characteristicsName;
         this.characteristicsValue = characteristicsValue;
 
         this.radioButtonGroup = radioGroup;
+
+        this.format = format;
 
         this.readAccess = new BitSet(2);
         // disable/enable read-access -> read-radio button invisible/visible
@@ -95,11 +99,16 @@ public class CharacteristicsModel {
         this.notificationAccess.set(1, enable);
     }
 
+    public int getFormat() {
+        return this.format;
+    }
+    public void setFormat(int newFormat) { this.format = newFormat; }
+
     public String getCharacteristicsValue() {
         return this.characteristicsValue;
     }
-    public void setCharacteristicsValue(String new_value) {
-        this.characteristicsValue = new_value;
+    public void setCharacteristicsValue(String newValue) {
+        this.characteristicsValue = newValue;
     }
 
 }

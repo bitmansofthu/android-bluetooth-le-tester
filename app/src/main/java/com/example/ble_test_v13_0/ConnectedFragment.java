@@ -15,7 +15,6 @@ import android.os.Build;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
 import androidx.fragment.app.Fragment;
 
 import android.util.Log;
@@ -263,8 +262,9 @@ public class ConnectedFragment extends Fragment {
 
                 CharPerServiceArrayList.add(new CharacteristicsModel
                         (characteristicsUuid, characteristicsName, "NULL",
-                                true, readAccess, writeAccess, notificationAccess,
-                                true));
+                       true, readAccess, writeAccess, notificationAccess,
+                       0, // todo: index to some definition-list
+                       true));
 
                 BtCharacteristicsArrayList.add(gattCharacteristic);
             }
@@ -479,6 +479,18 @@ public class ConnectedFragment extends Fragment {
                 expandableServicesAdapter).notifyDataSetChanged();
     };
 
+    LvChildItemFormatSpinnerOnItemSelected formatSpinnerOnItemSelected =
+            (groupPosition, childPosition, formatListIndex) -> {
+
+        BluetoothGattCharacteristic characteristic =
+                BtCharacteristicsArrayOfArrayList.get(groupPosition).
+                        get(childPosition);
+
+        // Set the new format in the adapter
+        characteristicsModelArrayList.get(groupPosition).
+                get(childPosition).setFormat(formatListIndex);
+    };
+
     // onClick-handler for ACKnowledge button.
     // When ACK for some characteristics-item is clicked on ServicesExpandableList,
     // content of the attribute will be read/write from/to the remote device depending on,
@@ -570,7 +582,8 @@ public class ConnectedFragment extends Fragment {
         expandableServicesAdapter = new ServicesExpandableListAdapter(this_context,
                 serviceModelArrayList, characteristicsModelArrayList,
                 readCharacteristicOnClickListener,
-                rwnRadioButtonOnClickListener);
+                rwnRadioButtonOnClickListener,
+                formatSpinnerOnItemSelected);
 
         servicesExpandableListView.setAdapter(expandableServicesAdapter);
 
