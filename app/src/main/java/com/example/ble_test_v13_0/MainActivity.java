@@ -59,8 +59,8 @@ public class MainActivity extends AppCompatActivity {
 
     BluetoothGatt btGatt;
 
-    // Stop connecting automatically after 30 seconds, if connection was not established.
-    static final long CONNECTING_PERIOD = 30000; // ms
+    // Stop connecting automatically after 15 seconds, if connection was not established.
+    static final long CONNECTING_PERIOD = 15000; // ms
 
     Handler connection_handler = new Handler(Looper.myLooper());
 

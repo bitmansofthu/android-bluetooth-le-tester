@@ -10,7 +10,6 @@
         android:id="@+id/disconnect_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
         android:text="@string/disconnect"
         app:layout_constraintBottom_toTopOf="@id/Services_expandableListView"
         app:layout_constraintStart_toStartOf="parent"
@@ -21,18 +20,20 @@
         android:id="@+id/Services_expandableListView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="40dp"
+        android:layout_marginTop="45dp"
         android:childDivider="@color/purple_700"
         android:clickable="true"
         android:divider="@android:color/darker_gray"
         android:dividerHeight="1.5dp"
         android:indicatorLeft="?android:attr/expandableListPreferredItemIndicatorLeft"
-        android:padding="10dp"
+        android:padding="2dp"
+        android:focusable="false"
+        android:descendantFocusability="afterDescendants"
         android:scrollbarStyle="outsideInset"
         android:scrollbars="horizontal|vertical"
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintBottom_toBottomOf="parent"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

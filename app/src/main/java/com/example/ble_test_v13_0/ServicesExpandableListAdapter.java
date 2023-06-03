@@ -34,7 +34,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
 
     // expandable items (children)
     private static class ViewHolderChild {
-        TextView CharUuidExpandedView;
+        TextView CharUuidExpandedView; //todo: more descriptive naming
         TextView CharNameExpandedView;
         Button CharReadExpandedView;
         EditText CharValueExpandedView;
@@ -110,7 +110,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
             viewHolder = new ViewHolderParent();
 
             LayoutInflater layoutInflater = (LayoutInflater) this.context.
-                    getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+                    getSystemService(Context.LAYOUT_INFLATER_SERVICE); //todo: -> constructor
 
             rowView = layoutInflater.inflate(R.layout.list_service_item_view, null);
 
@@ -262,22 +262,43 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
 
         viewHolderChild.CharValueExpandedView.setText(characteristic.getCharacteristicsValue());
 
-        if (characteristic.getReadChecked() &&
-            !viewHolderChild.radioButtonReadAccess.isChecked())
+        if (characteristic.getReadChecked())
         {
-            viewHolderChild.radioButtonReadAccess.setChecked(true);
+            if (!viewHolderChild.radioButtonReadAccess.isChecked()){
+                viewHolderChild.radioButtonReadAccess.setChecked(true);
+            }
+
+            if (viewHolderChild.CharReadExpandedView.getVisibility() ==
+                    View.INVISIBLE){
+                viewHolderChild.CharReadExpandedView.setVisibility(View.VISIBLE);
+            }
+            viewHolderChild.CharReadExpandedView.setText
+                    (R.string.characteristic_confirm_request);
         }
 
-        if (characteristic.getWriteChecked() &&
-            !viewHolderChild.radioButtonWriteAccess.isChecked())
+        if (characteristic.getWriteChecked())
         {
-            viewHolderChild.radioButtonWriteAccess.setChecked(true);
+            if (!viewHolderChild.radioButtonWriteAccess.isChecked()){
+                viewHolderChild.radioButtonWriteAccess.setChecked(true);
+            }
+
+            if (viewHolderChild.CharReadExpandedView.getVisibility() ==
+                    View.INVISIBLE){
+                viewHolderChild.CharReadExpandedView.setVisibility(View.VISIBLE);
+            }
+            viewHolderChild.CharReadExpandedView.setText
+                    (R.string.characteristic_confirm_write);
         }
 
-        if (characteristic.getNotificationChecked() &&
-            !viewHolderChild.radioButtonNotifyAccess.isChecked())
+        if (characteristic.getNotificationChecked())
         {
-            viewHolderChild.radioButtonNotifyAccess.setChecked(true);
+            if (!viewHolderChild.radioButtonNotifyAccess.isChecked()){
+                viewHolderChild.radioButtonNotifyAccess.setChecked(true);
+            }
+
+            if (viewHolderChild.CharReadExpandedView.getVisibility() == View.VISIBLE){
+                viewHolderChild.CharReadExpandedView.setVisibility(View.INVISIBLE);
+            }
         }
 
         return rowView;

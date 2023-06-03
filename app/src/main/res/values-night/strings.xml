@@ -9,9 +9,9 @@
     <string name="DeviceName">Device name</string>
     <string name="characteristics_unknown_name">Unknown name</string>
     <string name="characteristics_unknown_uuid">Unknown UUID</string>
-    <string name="characteristics_read_access">ReadAccess</string>
-    <string name="characteristics_write_access">WriteAccess</string>
-    <string name="characteristics_notify_access">NotifyAccess</string>
+    <string name="characteristics_read_access">Read</string>
+    <string name="characteristics_write_access">Write</string>
+    <string name="characteristics_notify_access">Notify</string>
     <string name="characteristics_value">value</string>
     <string name="characteristics_acknowledge_action">ACK</string>
     <string name="service_name">SERVICE</string>
@@ -19,4 +19,6 @@
     <string name="connection_progressing">Progressing…</string>
     <string name="hexadecimal">Hexadecimal</string>
     <string name="rssi">signal</string>
+    <string name="characteristic_confirm_request">Request</string>
+    <string name="characteristic_confirm_write">Send</string>
 </resources>

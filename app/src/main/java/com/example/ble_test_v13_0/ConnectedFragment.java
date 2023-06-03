@@ -141,6 +141,29 @@ public class ConnectedFragment extends Fragment {
         discoverGattServices();
     }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+        if (((MainActivity) requireActivity()).mConnectionState ==
+                BT_CONNECTION_STATE.CONNECTED) {
+
+            // DISCONNECTING-event is generated only, when normal local disconnect is done.
+            // E.g disconnect from remote device is detected by BT gatt-callback,
+            // causing DISCONNECTED-event to be generated.
+            ((MainActivity) requireActivity()).
+                    HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTING);
+        }
+    }
+
+    // This method is called when the fragment is no longer connected to the Activity
+    // Any references saved in onAttach should be null out here to prevent memory leaks.
+    @Override
+    public void onDetach() {
+        super.onDetach();
+        System.out.println("onDetach Connection fragment"); //todo
+    }
+
     @SuppressLint("MissingPermission")
     private void discoverGattServices() {
         ((MainActivity) requireActivity()).btGatt.discoverServices();
@@ -448,6 +471,12 @@ public class ConnectedFragment extends Fragment {
         readStateHandler(groupPosition, childPosition, readChecked);
         writeStateHandler(groupPosition, childPosition, writeChecked);
         notificationStateHandler(groupPosition, childPosition, notificationChecked);
+
+        // Notify the adapter for updating the view, because selecting of
+        // some Radio-button effects also to state of confirmation button
+        // (e.g. text changes "REQUEST" -> "SEND")
+        ((BaseExpandableListAdapter)
+                expandableServicesAdapter).notifyDataSetChanged();
     };
 
     // onClick-handler for ACKnowledge button.
