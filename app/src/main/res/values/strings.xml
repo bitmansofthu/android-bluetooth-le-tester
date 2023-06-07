@@ -20,4 +20,5 @@
     <string name="characteristic_confirm_request">Request</string>
     <string name="characteristic_confirm_write">Send</string>
     <string name="spinnerDropDownValueFormatTitle">Format</string>
+    <string name="empty_characteristic_value">No value</string>
 </resources>

@@ -169,12 +169,10 @@ public class ConnectedFragment extends Fragment {
     }
 
     public void GattCharacteristicsValueReceived(BluetoothGattCharacteristic characteristic,
-                                                 byte[] value)
+                                                 byte[] valueInBinary)
     {
-        final StringBuilder string = new StringBuilder(value.length);
-
-        for(byte byteChar : value)
-            string.append(String.format("%02X", byteChar));
+        if (valueInBinary == null || valueInBinary.length == 0)
+            return;
 
         for (int groupPos = 0;
              groupPos < expandableServicesAdapter.getGroupCount();
@@ -189,7 +187,7 @@ public class ConnectedFragment extends Fragment {
                 {
                     characteristicsModelArrayList.
                         get(groupPos).
-                            get(childPosition).setCharacteristicsValue(string.toString());
+                            get(childPosition).setCharacteristicsValue(valueInBinary);
 
                     // NOTICE: cast to (BaseExpandableListAdapter) needed
                     // for accessing notifyDataSetChanged !!!
@@ -261,9 +259,11 @@ public class ConnectedFragment extends Fragment {
                 notificationAccess = (property & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0;
 
                 CharPerServiceArrayList.add(new CharacteristicsModel
-                        (characteristicsUuid, characteristicsName, "NULL",
+                        (characteristicsUuid,
+                        characteristicsName,
+                       null, // actual value of GATT-attribute not available yet
                        true, readAccess, writeAccess, notificationAccess,
-                       0, // todo: index to some definition-list
+                       0, // index of HEX-format (todo: add index to some definition-list?)
                        true));
 
                 BtCharacteristicsArrayList.add(gattCharacteristic);
@@ -386,7 +386,6 @@ public class ConnectedFragment extends Fragment {
 
     public static class TypedValueChecked {
         boolean badInput;
-        String nibbleString;
         byte[] outValueBuff;
     }
 
@@ -395,20 +394,20 @@ public class ConnectedFragment extends Fragment {
     public TypedValueChecked checkAndConvertTypedValue(String editedValue){
 
         TypedValueChecked returnValue = new TypedValueChecked();
-
         returnValue.badInput = false;
+        String nibbleString;
 
         if ( (editedValue.length() % 2) != 0){
             // adjust to even number of octets to do easier conversion
             // e.g. 'abc' -> '0abc'
-            returnValue.nibbleString = "0".
+            nibbleString = "0".
                     concat(editedValue).toLowerCase(Locale.ROOT); // e.g 'A' -> 'a'
         }
         else{
-            returnValue.nibbleString = editedValue.toLowerCase(Locale.ROOT);
+            nibbleString = editedValue.toLowerCase(Locale.ROOT);
         }
 
-        int nibbleLength = returnValue.nibbleString.length();
+        int nibbleLength = nibbleString.length();
         int byteLength = nibbleLength / 2; // single octet contains two nibbles
 
         returnValue.outValueBuff = new byte[byteLength];
@@ -426,7 +425,7 @@ public class ConnectedFragment extends Fragment {
         int reverse_index = nibbleLength - 1;
         for (; index < nibbleLength; index++, reverse_index--)
         {
-            char nibbleAscii = returnValue.nibbleString.charAt(index);
+            char nibbleAscii = nibbleString.charAt(index);
             byte nibbleByte;
 
             // Convert ASCII-formatted hexadecimal nibbles to integer
@@ -441,7 +440,6 @@ public class ConnectedFragment extends Fragment {
                 nibbleByte += 10; // e.g. a(hex) = 10(dec)
             }
             else{
-                returnValue.nibbleString = ""; // clean edited value
                 returnValue.badInput = true;
 
                 break;
@@ -489,6 +487,11 @@ public class ConnectedFragment extends Fragment {
         // Set the new format in the adapter
         characteristicsModelArrayList.get(groupPosition).
                 get(childPosition).setFormat(formatListIndex);
+
+        // Notify the adapter for updating the view for executing
+        // format conversion to corresponding characteristic value
+        ((BaseExpandableListAdapter)
+                expandableServicesAdapter).notifyDataSetChanged();
     };
 
     // onClick-handler for ACKnowledge button.
@@ -549,21 +552,21 @@ public class ConnectedFragment extends Fragment {
                             Log.w(TAG, "Write failed"); // todo: what to do?
                         }
                     }
+
+                    // update new value to the adapter
+                    characteristicsModelArrayList.
+                            get(groupPosition).
+                            get(childPosition).setCharacteristicsValue
+                                    (typedValueChecked.outValueBuff);
+
+                    // and notify the adapter for updating the view
+                    ((BaseExpandableListAdapter)
+                            expandableServicesAdapter).notifyDataSetChanged();
                 }
                 else{
                     Toast.makeText(this_context, "Non-hexadecimal value entered." +
                             "Write new value in range [A...F] and [0...9].", Toast.LENGTH_LONG).show();
                 }
-
-                // update new value to the adapter
-                characteristicsModelArrayList.
-                        get(groupPosition).
-                        get(childPosition).setCharacteristicsValue
-                                (typedValueChecked.nibbleString);
-
-                // and notify the adapter for updating the view
-                ((BaseExpandableListAdapter)
-                        expandableServicesAdapter).notifyDataSetChanged();
             }
         }
     };

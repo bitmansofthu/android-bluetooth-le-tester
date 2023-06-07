@@ -2,7 +2,6 @@ package com.example.ble_test_v13_0;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.KeyEvent;
@@ -18,9 +17,11 @@ import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Objects;
 
 public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     private final Context context;
@@ -32,8 +33,8 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     private final LvChildItemFormatSpinnerOnItemSelected formatSpinnerOnItemSelected;
     private String editableValue;
 
-    private final String[] mSpinnerFormatItems =
-            new String[]{"HEXA", "+-INT", "+INT", "ASCII", "FLOAT", "5", "6", "7", "8", "9"};
+    public final String[] mSpinnerFormatItems =
+            new String[]{"HEX", "+INT", "+-INT", "ASCII", "FLOAT"};
 
     // View lookup cache (view holders for parents and corresponding children for each parent)
     private static class ViewHolderParent {
@@ -305,7 +306,26 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
 
         viewHolderChild.CharNameExpandedView.setText(characteristic.getCharacteristicsName());
 
-        viewHolderChild.CharValueExpandedView.setText(characteristic.getCharacteristicsValue());
+        byte[] valueInBinary = characteristic.getCharacteristicsValue();
+
+        if ( (valueInBinary != null) && (valueInBinary.length > 0) ){
+            int formatIndex = characteristic.getFormat();
+
+            if (formatIndex < mSpinnerFormatItems.length){
+                String valueAsciiFormat = formatConversion(valueInBinary,
+                        mSpinnerFormatItems[formatIndex]);
+
+                if (valueAsciiFormat != null) {
+                    viewHolderChild.CharValueExpandedView.setText(valueAsciiFormat);
+                } else {
+                    viewHolderChild.CharValueExpandedView.
+                            setText(R.string.empty_characteristic_value);
+                }
+            }
+        }
+        else{
+            viewHolderChild.CharValueExpandedView.setText(R.string.empty_characteristic_value);
+        }
 
         viewHolderChild.spinnerFormatSelection.setSelection(characteristic.getFormat());
 
@@ -359,4 +379,123 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
         return true; // what about returning false????
     }
 
+    // Convert raw byte-buffer (valueInBinary) to the string according to
+    // the requested format. Notice: Multi-octet fields within the GATT Profile
+    // shall be sent least significant octet first (little endian).
+    // So valueInBinary[0] is LSB.
+    public String formatConversion(byte[] valueInBinary, String format){
+        String convertedValue;
+
+        if (Objects.equals(format, "HEX")){
+            // Hex decimal
+            final StringBuilder valueHexDecimalInAsciiFormat =
+                    new StringBuilder(valueInBinary.length);
+
+            // LSB first -> MSB first (MSB is first, thus most left character in UI)
+            for (int i = valueInBinary.length - 1; i >= 0 ; i--) {
+                byte byteChar = valueInBinary[i];
+                valueHexDecimalInAsciiFormat.append(String.format("%02X", byteChar));
+            }
+
+            convertedValue = valueHexDecimalInAsciiFormat.toString();
+        }
+        else if (Objects.equals(format, "+INT") ||
+                Objects.equals(format, "+-INT") || Objects.equals(format, "FLOAT")){
+            long signedLongIntValue = 0;
+
+            if (valueInBinary.length > 8){
+                // 64-bit integer (long) is the biggest supported integer type
+                return null;
+            }
+
+            // Integers cannot be declared as unsigned in Java,
+            // so store first the byte-buffer as signed long integer.
+            // Take also care of 'LSB first'-rule, so for doing easier conversion,
+            // start from MSB...
+            for (int i = valueInBinary.length - 1; i >= 0 ; i--) {
+                // Java does sign-extension (two's complement) automatically any time,
+                // a byte (or short) is converted to int or long,
+                // and the purpose of "& 0xFF" on a byte is to
+                // UNDO the automatic sign extension.
+                byte byteChar = valueInBinary[i];
+                signedLongIntValue <<= 8;
+                signedLongIntValue |= byteChar & 0xff;
+            }
+
+            if (format.equals("+INT")){
+                // unsigned integer
+
+                // There is no uint-variable available in java,
+                // but unsigned integer can be presented as string using toUnsignedString();
+                // and string is, what we need here...
+                // Notice: there is no support for Byte.toUnsignedString or
+                // Short.toUnsignedString. So lets convert value from long to integer
+                // when not more than 4 bytes are available to be encoded.
+                // Otherwise lets progress with long.
+                int signedIntValue = 0;
+
+                if (valueInBinary.length == 1){ // byte
+                    signedIntValue = (int) (signedLongIntValue & 0x000000ff);
+                    convertedValue = Integer.toUnsignedString(signedIntValue);
+                }
+                else if (valueInBinary.length == 2){ //short
+                    signedIntValue = (int) (signedLongIntValue & 0x0000ffff);
+                    convertedValue = Integer.toUnsignedString(signedIntValue);
+                }
+                else if (valueInBinary.length == 3){
+                    signedIntValue = (int) (signedLongIntValue & 0x00ffffff);
+                    convertedValue = Integer.toUnsignedString(signedIntValue);
+                }
+                else if (valueInBinary.length == 4){ // int
+                    signedIntValue = (int) (signedLongIntValue);
+                    convertedValue = Integer.toUnsignedString(signedIntValue);
+                }
+                else{
+                    convertedValue = Long.toUnsignedString(signedLongIntValue);
+                }
+            }
+            else if (format.equals("+-INT")){
+                // signed integer
+                int signedIntValue = 0;
+
+                if (valueInBinary.length == 1){ // byte
+                    byte signedByteValue = 0;
+                    signedByteValue = (byte) (signedLongIntValue);
+                    convertedValue = Byte.toString(signedByteValue);
+                }
+                else if (valueInBinary.length == 2){ //short
+                    short signedShortValue = 0;
+                    signedShortValue = (short) (signedLongIntValue);
+                    convertedValue = Short.toString(signedShortValue);
+                }
+                else if (valueInBinary.length == 3){
+                    signedIntValue = (int) (signedLongIntValue);
+                    convertedValue = Integer.toString(signedIntValue);
+                }
+                else if (valueInBinary.length == 4){ // int
+                    signedIntValue = (int) (signedLongIntValue);
+                    convertedValue = Integer.toString(signedIntValue);
+                }
+                else{
+                    convertedValue = Long.toString(signedLongIntValue);
+                }
+            }
+            else {
+                // float
+                double doubleValue = Double.longBitsToDouble(signedLongIntValue);
+
+                // convert to string
+                convertedValue = String.valueOf(doubleValue);
+            }
+        }
+        else if (Objects.equals(format, "ASCII")){
+            // ASCII
+            convertedValue = new String(valueInBinary, StandardCharsets.UTF_8);
+        }
+        else {
+            convertedValue = null;
+        }
+
+        return  convertedValue;
+    }
 }

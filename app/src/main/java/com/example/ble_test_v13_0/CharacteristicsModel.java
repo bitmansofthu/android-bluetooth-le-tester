@@ -5,7 +5,7 @@ import java.util.BitSet;
 public class CharacteristicsModel {
     private final String characteristicsUUID;
     private final String characteristicsName;
-    private String characteristicsValue;
+    private byte[] characteristicsValue;
 
     // Radio group-parameter in such is useless here,
     // but important for giving correct amount of UI-components
@@ -21,19 +21,21 @@ public class CharacteristicsModel {
 
     private int format; // selected format (unsigned integer8, string etc.)
 
-    // Acknowledge-parameter (for Confirmation-button for Read-request/Send) in such is useless here,
+    // confirmAction-parameter (for Confirmation-button for Read-request/Send) in such is useless here,
     // but important for giving correct amount of UI-components
     // (see ServicesExpandableListAdapter:getChildrenCount)
-    private final boolean acknowledge;
+    private final boolean confirmAction;
 
     public CharacteristicsModel(String characteristicsUUID,
                                 String characteristicsName,
-                                String characteristicsValue,
+                                byte[] characteristicsValue,
                                 boolean radioGroup,
                                 boolean readAccess,
                                 boolean writeAccess,
                                 boolean notificationAccess,
-                                int format, boolean acknowledge) {
+                                int format,
+                                boolean confirmAction) {
+
         this.characteristicsUUID = characteristicsUUID;
         this.characteristicsName = characteristicsName;
         this.characteristicsValue = characteristicsValue;
@@ -60,7 +62,7 @@ public class CharacteristicsModel {
         // set notify-radio button initially unchecked
         this.notificationAccess.set(1, false);
 
-        this.acknowledge = acknowledge;
+        this.confirmAction = confirmAction;
     }
 
     public String getCharacteristicsUUID() {
@@ -104,10 +106,10 @@ public class CharacteristicsModel {
     }
     public void setFormat(int newFormat) { this.format = newFormat; }
 
-    public String getCharacteristicsValue() {
+    public byte[] getCharacteristicsValue() {
         return this.characteristicsValue;
     }
-    public void setCharacteristicsValue(String newValue) {
+    public void setCharacteristicsValue(byte[] newValue) {
         this.characteristicsValue = newValue;
     }
 
