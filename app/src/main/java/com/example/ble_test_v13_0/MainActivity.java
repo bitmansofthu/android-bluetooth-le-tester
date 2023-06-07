@@ -14,8 +14,11 @@ import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothProfile;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -29,6 +32,8 @@ import android.widget.Toast;
 
 import static android.Manifest.permission.BLUETOOTH_SCAN;
 import static android.Manifest.permission.BLUETOOTH_CONNECT;
+import static android.bluetooth.BluetoothDevice.PHY_LE_1M_MASK;
+import static android.bluetooth.BluetoothDevice.PHY_LE_2M_MASK;
 import static android.bluetooth.BluetoothDevice.TRANSPORT_LE;
 import static android.bluetooth.BluetoothGatt.GATT_SUCCESS;
 import static android.content.ContentValues.TAG;
@@ -56,8 +61,9 @@ public class MainActivity extends AppCompatActivity {
 
     BluetoothManager btManager;
     BluetoothAdapter btAdapter;
-
     BluetoothGatt btGatt;
+    BluetoothDevice mDevice;
+    BroadcastReceiver receiver;
 
     // Stop connecting automatically after 15 seconds, if connection was not established.
     static final long CONNECTING_PERIOD = 15000; // ms
@@ -122,6 +128,7 @@ public class MainActivity extends AppCompatActivity {
             // Installation of this application in HW not supporting Low Energy BT (>= Ble v4.0)
             // is not allowed...
             Toast.makeText(this, "BLE not supported!", Toast.LENGTH_LONG).show();
+            Log.w(TAG, "Bluetooth Low energy not supported for this device");
             finish();
             return;
         }
@@ -129,6 +136,8 @@ public class MainActivity extends AppCompatActivity {
         if (!btAdapter.isEnabled()) {
             Toast.makeText(MainActivity.this, "Bluetooth not enabled! Enable it from Settings.",
                     Toast.LENGTH_LONG).show();
+            Log.w(TAG, "Bluetooth not enabled! Enable it from Settings.");
+
             finish();
             return;
         }
@@ -153,12 +162,49 @@ public class MainActivity extends AppCompatActivity {
             throw new RuntimeException(e);
         }
 
+        receiver = new BroadcastReceiver() {
+            @SuppressLint("MissingPermission")
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String action = intent.getAction();
+                Log.d("BT", "onReceive: " + action);
+
+                if (BluetoothDevice.ACTION_ACL_CONNECTED.equals(action)){
+                    mDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                    if (mDevice.getBondState() == BluetoothDevice.BOND_BONDED) {
+                        // device paired
+                        //Log.d("bt", "bonded");
+                    }
+                    else if(mDevice.getBondState() == BluetoothDevice.BOND_BONDING) {
+                        //Log.d("bt", "bonding");
+                    }
+                }
+                else if (BluetoothDevice.ACTION_PAIRING_REQUEST.equals(action)){
+                 // todo: close 'Connecting' alert dialog
+                }
+            }
+        };
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        System.out.println("onStart main"); //todo: remove
+
+        final IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
+        intentFilter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
+        intentFilter.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
+        intentFilter.addAction(BluetoothDevice.ACTION_PAIRING_REQUEST);
+
+        registerReceiver(receiver, intentFilter);
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        System.out.println("onStop main");
+        unregisterReceiver(receiver);
+        System.out.println("onStop main"); //todo: remove
     }
 
     @Override
@@ -170,8 +216,29 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        dialogConnecting.dismiss();
+        if (dialogConnecting != null){
+            dialogConnecting.dismiss();
+        }
+
         System.out.println("onDestroy main");
+    }
+
+    @Override
+    public void onBackPressed() {
+
+        if (mConnectionState == BT_CONNECTION_STATE.CONNECTED) {
+            // DISCONNECTING-event is generated only, when normal local disconnect is done.
+            // 1) back-button pressed or
+            // 2) disconnect-button pressed inside Connected-fragment
+            // Both ways cause the Connected-fragment being replaced by Scan-fragment
+            // (see BT gatt-callback)
+            // Disconnection triggered by remote device is detected by BT gatt-callback,
+            // causing DISCONNECTED-event to be generated.
+            HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTING);
+        }
+        else if (mConnectionState == BT_CONNECTION_STATE.NOT_SCANNING) {
+            finish();
+        }
     }
 
     // YAML formatted file-Parser.
@@ -593,8 +660,9 @@ public class MainActivity extends AppCompatActivity {
     static boolean refreshDeviceCache(BluetoothGatt gatt) {
         try {//from  w w  w.ja  v  a 2  s  . c om
             Method localMethod = gatt.getClass().getMethod("refresh");
-            return (boolean) (Boolean) localMethod.invoke(gatt, new Object[0]);
+            return (boolean) localMethod.invoke(gatt, new Object[0]);
         } catch (Exception ignored) {
+            //todo: log
         }
         return false;
     }
@@ -632,9 +700,15 @@ public class MainActivity extends AppCompatActivity {
                 mConnectionState = BT_CONNECTION_STATE.CONNECTING;
 
                 // Start connecting to the remote device.
+                if (btGatt != null){
+                    // Close gatt-interface (if there is any interface available anymore).
+                    // BT-interface might be stuck.
+                    btGatt.close();
+                }
 
                 btGatt = getMyBTDevice().connectGatt(MainActivity.this,
-                        false, gattCallback,TRANSPORT_LE);
+                        false, gattCallback,TRANSPORT_LE,
+                        PHY_LE_2M_MASK);
 /*
 // clean GATT-services/characteristics stored locally on cache-file
                 boolean refresh = refreshDeviceCache(btGatt);
@@ -679,10 +753,13 @@ public class MainActivity extends AppCompatActivity {
 
             // Disconnecting-event triggered by this local device
 
-            if (mConnectionState == BT_CONNECTION_STATE.CONNECTED){
+            if (mConnectionState == BT_CONNECTION_STATE.CONNECTED) {
                 // normal disconnect (from UI) after, the connection is established
                 mConnectionState = BT_CONNECTION_STATE.DISCONNECTING;
-                btGatt.disconnect();
+
+                if (btGatt != null) {
+                    btGatt.disconnect();
+                }
             }
             else {
                 // Disconnect (by timeout) before the connection is established.
