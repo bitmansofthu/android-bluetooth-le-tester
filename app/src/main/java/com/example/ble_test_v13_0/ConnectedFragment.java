@@ -30,6 +30,7 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -115,8 +116,18 @@ public class ConnectedFragment extends Fragment {
     // This event is triggered soon after onCreateView().
     // onViewCreated() is only called if the view returned from onCreateView() is non-null.
     // Any view setup should occur here.  E.g., view lookups and attaching view listeners.
+    @SuppressLint("MissingPermission")
     @Override
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState){
+
+        String deviceName = ((MainActivity) requireActivity()).getMyBTDevice().getName();
+        String address = ((MainActivity) requireActivity()).getMyBTDevice().getAddress();
+        String title = deviceName + "     " + address;
+
+        Objects.requireNonNull(((MainActivity) requireActivity()).
+                getSupportActionBar()).
+                setTitle(title);
+
         disconnectButton = fragment_view.findViewById(R.id.disconnect_button);
         disconnectButton.setOnClickListener(v -> {
             if (((MainActivity) requireActivity()).mConnectionState ==

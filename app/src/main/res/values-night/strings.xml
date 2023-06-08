@@ -22,4 +22,9 @@
     <string name="characteristic_confirm_write">Send</string>
     <string name="spinnerDropDownValueFormatTitle">Format</string>
     <string name="empty_characteristic_value">No value</string>
+    <string name="checkbox_refresh_cache">Clear GATT-cache</string>
+    <string name="checkbox_refresh_cache_tip">
+        Clear local cache for discovering GATT-data from remote device.
+        Otherwise keep this box unchecked.
+    </string>
 </resources>

@@ -83,6 +83,8 @@ public class MainActivity extends AppCompatActivity {
     FragmentManager fm;
     FragmentTransaction ft;
 
+    private Boolean clearGattInformationCache;
+
     public void setMyBTDevice(BluetoothDevice mMyDevice) {
         this.mMyBTDevice = mMyDevice;
     }
@@ -90,6 +92,11 @@ public class MainActivity extends AppCompatActivity {
     public BluetoothDevice getMyBTDevice() {
         return this.mMyBTDevice;
     }
+
+    public boolean needToClearGattInformationCache() {
+        return this.clearGattInformationCache;
+    }
+    public void clearGattInformationCache(boolean clear) { this.clearGattInformationCache = clear; }
 
     private final HashMap<String, String> reserved_uuids_with_description =
             new HashMap<>();
@@ -658,11 +665,11 @@ public class MainActivity extends AppCompatActivity {
 
 
     static boolean refreshDeviceCache(BluetoothGatt gatt) {
-        try {//from  w w  w.ja  v  a 2  s  . c om
+        try {
             Method localMethod = gatt.getClass().getMethod("refresh");
             return (boolean) localMethod.invoke(gatt, new Object[0]);
         } catch (Exception ignored) {
-            //todo: log
+            Log.e(TAG, "Failed to refresh Local Cache (GATT-information)");
         }
         return false;
     }
@@ -709,11 +716,23 @@ public class MainActivity extends AppCompatActivity {
                 btGatt = getMyBTDevice().connectGatt(MainActivity.this,
                         false, gattCallback,TRANSPORT_LE,
                         PHY_LE_2M_MASK);
-/*
-// clean GATT-services/characteristics stored locally on cache-file
-                boolean refresh = refreshDeviceCache(btGatt);
-                Log.w(TAG, "Cache refreshed: " + refresh);
-*/
+
+                if (needToClearGattInformationCache() && (btGatt != null) ){
+                    // clean GATT-services/characteristics stored locally on cache-file
+                    boolean refresh = refreshDeviceCache(btGatt);
+                    if (refresh){
+                        Log.w(TAG, "Local Cache for GATT-information refreshed");
+                        Toast.makeText(MainActivity.this, "Local Cache for GATT-information refreshed",
+                                Toast.LENGTH_LONG).show();
+                    }
+                    else{
+                        Log.w(TAG, "Local Cache for GATT-information not refreshed");
+                        Toast.makeText(MainActivity.this, "Local Cache for GATT-information " +
+                                        "not successfully refreshed." +
+                                        "Try again by reconnecting to your remote device.",
+                                Toast.LENGTH_LONG).show();
+                    }
+                }
             }
         }
         else if (stateChange == BT_CONNECTION_STATE.CONNECTED){

@@ -23,6 +23,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.ProgressBar;
 
 import java.util.ArrayList;
@@ -53,6 +55,7 @@ public class ScanningFragment extends Fragment {
     Button startScanningButton;
 
     ProgressBar scanningProgressBar;
+    CheckBox refreshCacheCheckBox;
 
     // Stop scanning automatically after 60 seconds
     // (if not stopped manually earlier).
@@ -127,6 +130,10 @@ public class ScanningFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState){
 
+        String appName = getString(R.string.app_name);
+        Objects.requireNonNull(((MainActivity) requireActivity()).
+                getSupportActionBar()).setTitle(appName);
+
         btLeScanner = ((MainActivity) requireActivity()).btAdapter.getBluetoothLeScanner();
 
         startScanningButton = fragment_view.findViewById(R.id.scan_button);
@@ -134,6 +141,14 @@ public class ScanningFragment extends Fragment {
 
         scanningProgressBar = fragment_view.findViewById(R.id.scanProgressBar);
         scanningProgressBar.setVisibility(INVISIBLE);
+
+        refreshCacheCheckBox = fragment_view.findViewById(R.id.refreshGattCacheCheckBox);
+        // Notice: this listener is using compound button:
+        // onCheckedChanged(CompoundButton buttonView, boolean isChecked)
+        refreshCacheCheckBox.setOnCheckedChangeListener((buttonView, isChecked) ->
+                ((MainActivity) requireActivity()).clearGattInformationCache(isChecked));
+
+        ((MainActivity) requireActivity()).clearGattInformationCache(refreshCacheCheckBox.isChecked());
 
         createBTDevicesInRecyclerViewAdapter();
     }

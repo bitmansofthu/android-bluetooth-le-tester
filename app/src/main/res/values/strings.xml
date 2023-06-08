@@ -21,4 +21,17 @@
     <string name="characteristic_confirm_write">Send</string>
     <string name="spinnerDropDownValueFormatTitle">Format</string>
     <string name="empty_characteristic_value">No value</string>
+    <string name="checkbox_refresh_cache">Clear GATT-cache.</string>
+<!--
+Android stores the discovered GATT-services and characteristics into cache-file.
+For each remote device you have been connected earlier, contains this dedicated cache.
+When reconnecting to your remote device, GATT-information is gathered from the cache.
+But, sometimes GATT-information in remote device might have changed.
+Then check the checkbox before starting to connect, for clearing the cache file.
+Otherwise keep this checkbox unchecked.
+-->
+    <string name="checkbox_refresh_cache_tip">
+        Clear local cache for discovering GATT-data from remote device.
+        Otherwise keep this box unchecked.
+    </string>
 </resources>
