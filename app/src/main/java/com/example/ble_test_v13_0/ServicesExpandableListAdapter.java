@@ -49,6 +49,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
         Button CharReadExpandedView;
         EditText CharValueExpandedView;
         RadioGroup radioGroupReadWriteNotify;
+        RadioButton radioButtonDisableAccesses;
         RadioButton radioButtonReadAccess;
         RadioButton radioButtonWriteAccess;
         RadioButton radioButtonNotifyAccess;
@@ -179,6 +180,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
             viewHolderChild.radioGroupReadWriteNotify = rowView.
                     findViewById(R.id.radioGroupReadWriteNotify);
 
+            viewHolderChild.radioButtonDisableAccesses = rowView.findViewById(R.id.radioButtonOff);
             viewHolderChild.radioButtonReadAccess = rowView.findViewById(R.id.radioButtonRead);
             viewHolderChild.radioButtonWriteAccess = rowView.findViewById(R.id.radioButtonWrite);
             viewHolderChild.radioButtonNotifyAccess = rowView.findViewById(R.id.radioButtonNotification);
@@ -234,6 +236,10 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
                         editableValue,
                         characteristic.getNotificationChecked()
                 ));
+
+        viewHolderChild.radioButtonDisableAccesses.setOnClickListener(v ->
+                rwnRadioButtonOnClickListener.onClick(groupPosition, childPosition,
+                false, false, false));
 
         viewHolderChild.radioButtonReadAccess.setOnClickListener(v ->
                 rwnRadioButtonOnClickListener.onClick(groupPosition, childPosition,
@@ -328,6 +334,16 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
         }
 
         viewHolderChild.spinnerFormatSelection.setSelection(characteristic.getFormat());
+
+        if (characteristic.getAccessesDisabled()){
+            if (!viewHolderChild.radioButtonDisableAccesses.isChecked()){
+                viewHolderChild.radioButtonDisableAccesses.setChecked(true);
+            }
+            if (viewHolderChild.CharReadExpandedView.getVisibility() ==
+                    View.VISIBLE){
+                viewHolderChild.CharReadExpandedView.setVisibility(View.INVISIBLE);
+            }
+        }
 
         if (characteristic.getReadChecked())
         {

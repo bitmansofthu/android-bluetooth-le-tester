@@ -27,4 +27,5 @@
         Clear local cache for discovering GATT-data from remote device.
         Otherwise keep this box unchecked.
     </string>
+    <string name="Disable">Off</string>
 </resources>

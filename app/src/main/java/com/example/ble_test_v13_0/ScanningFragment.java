@@ -191,7 +191,7 @@ public class ScanningFragment extends Fragment {
                     // (if name was not available on first scan-result for this device)
                     addOrModifyDevice(result);
 
-                    BluetoothDevice device = result.getDevice();
+                    BluetoothDevice device = result.getDevice(); //todo: remove
                     int signal = result.getRssi();
                 }
             };

@@ -258,9 +258,10 @@ public class ConnectedFragment extends Fragment {
                         (characteristicsUuid,
                         characteristicsName,
                        null, // actual value of GATT-attribute not available yet
-                       true, readAccess, writeAccess, notificationAccess,
+                        true,
+           false, readAccess, writeAccess, notificationAccess,
                        0, // index of HEX-format (todo: add index to some definition-list?)
-                       true));
+                        true));
 
                 BtCharacteristicsArrayList.add(gattCharacteristic);
             }
@@ -270,6 +271,26 @@ public class ConnectedFragment extends Fragment {
         }
 
         showGattProfilesInExpandableListView();
+    }
+
+    public void disableAllAccessesStateHandler(int groupPosition, int childPosition,
+                                               boolean readChecked,
+                                               boolean writeChecked,
+                                               boolean notificationChecked){
+        boolean disableAccesses;
+
+        // disable read-, write- and notify-accesses, if no accesses checked
+        disableAccesses = !readChecked && !writeChecked && !notificationChecked;
+
+        if (disableAccesses == characteristicsModelArrayList.
+                get(groupPosition).get(childPosition).
+                getAccessesDisabled()){
+            return; // no state change
+        }
+
+        // change the state in the adapter
+        characteristicsModelArrayList.get(groupPosition).
+                get(childPosition).setAccessesDisabled(disableAccesses);
     }
 
     public void readStateHandler(int groupPosition, int childPosition,
@@ -466,9 +487,15 @@ public class ConnectedFragment extends Fragment {
         writeStateHandler(groupPosition, childPosition, writeChecked);
         notificationStateHandler(groupPosition, childPosition, notificationChecked);
 
+        disableAllAccessesStateHandler(groupPosition, childPosition,
+                                        readChecked,
+                                        writeChecked,
+                                        notificationChecked);
+
         // Notify the adapter for updating the view, because selecting of
         // some Radio-button effects also to state of confirmation button
-        // (e.g. text changes "REQUEST" -> "SEND")
+        // (e.g. text changes "REQUEST" -> "SEND",
+        // button disappears when notify selected)
         ((BaseExpandableListAdapter)
                 expandableServicesAdapter).notifyDataSetChanged();
     };

@@ -12,6 +12,7 @@ public class CharacteristicsModel {
     // (see ServicesExpandableListAdapter:getChildrenCount)
     private final boolean radioButtonGroup; //read/write/notification bound inside radio group
 
+    private Boolean disableAccesses; // if true, read/write/notify are all disabled
     // bit set:
     //  bit 0 = 1: radio-button visible
     //  bit 1 = 1: radio-button checked
@@ -30,6 +31,7 @@ public class CharacteristicsModel {
                                 String characteristicsName,
                                 byte[] characteristicsValue,
                                 boolean radioGroup,
+                                boolean disableAccesses,
                                 boolean readAccess,
                                 boolean writeAccess,
                                 boolean notificationAccess,
@@ -41,6 +43,7 @@ public class CharacteristicsModel {
         this.characteristicsValue = characteristicsValue;
 
         this.radioButtonGroup = radioGroup;
+        this.disableAccesses = disableAccesses;
 
         this.format = format;
 
@@ -70,6 +73,12 @@ public class CharacteristicsModel {
     }
     public String getCharacteristicsName() {
         return this.characteristicsName;
+    }
+    public boolean getAccessesDisabled() {
+        return this.disableAccesses;
+    }
+    public void setAccessesDisabled(boolean disable) {
+        this.disableAccesses = disable;
     }
     public boolean getReadAccess() {
         return this.readAccess.get(0);
