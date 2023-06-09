@@ -19,6 +19,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Objects;
@@ -497,11 +498,21 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
                 }
             }
             else {
-                // float
-                double doubleValue = Double.longBitsToDouble(signedLongIntValue);
+                // floating number
+                if (valueInBinary.length == 4){
+                    float f = ByteBuffer.wrap(valueInBinary).
+                                            order(ByteOrder.LITTLE_ENDIAN).getFloat();
+                    convertedValue = Float.toString(f);
+                }
+                else if (valueInBinary.length == 8){
+                    double doubleVal = ByteBuffer.wrap(valueInBinary).
+                                                    order(ByteOrder.LITTLE_ENDIAN).getDouble();
+                    convertedValue = Double.toString(doubleVal);
+                }
+                else {
+                    convertedValue = null;
+                }
 
-                // convert to string
-                convertedValue = String.valueOf(doubleValue);
             }
         }
         else if (Objects.equals(format, "ASCII")){

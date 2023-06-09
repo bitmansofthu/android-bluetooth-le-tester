@@ -16,12 +16,12 @@
     <string name="service_uuid">Unknown UUID</string>
     <string name="connection_progressing">Progressing…</string>
     <string name="hexadecimal">Hexadecimal</string>
-    <string name="rssi">signal</string>
+    <string name="rssi">-100 db</string>
     <string name="characteristic_confirm_request">Request</string>
     <string name="characteristic_confirm_write">Send</string>
     <string name="spinnerDropDownValueFormatTitle">Format</string>
     <string name="empty_characteristic_value">No value</string>
-    <string name="checkbox_refresh_cache">Clear GATT-cache.</string>
+    <string name="checkbox_refresh_cache">Clear GATT-cache</string>
 <!--
 Android stores the discovered GATT-services and characteristics into cache-file.
 For each remote device you have been connected earlier, contains this dedicated cache.
@@ -31,8 +31,7 @@ Then check the checkbox before starting to connect, for clearing the cache file.
 Otherwise keep this checkbox unchecked.
 -->
     <string name="checkbox_refresh_cache_tip">
-        Clear local cache for discovering GATT-data from remote device.
-        Otherwise keep this box unchecked.
+        Clear cache for discovering GATT-data from remote device (not from the cache itself).
     </string>
     <string name="Disable">Off</string>
 </resources>

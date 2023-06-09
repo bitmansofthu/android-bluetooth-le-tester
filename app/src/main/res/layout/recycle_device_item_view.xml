@@ -17,26 +17,12 @@
         android:paddingBottom="10dp"
         android:text="@string/DeviceName"
         android:textColor="@android:color/black"
-        android:textSize="22sp"
-        app:layout_constraintBottom_toTopOf="@+id/device_mac_address"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/device_signal_level"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_chainStyle="packed"
-        tools:ignore="RtlSymmetry" />
-
-    <TextView
-        android:id="@+id/device_mac_address"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:paddingStart="?android:attr/expandableListPreferredItemPaddingLeft"
-        android:paddingTop="5dp"
-        android:paddingBottom="5dp"
-        android:text="@string/mac_address"
-        android:textColor="@android:color/black"
-        android:textSize="16sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="@+id/device_name"
-        app:layout_constraintTop_toBottomOf="@+id/device_name"
         tools:ignore="RtlSymmetry" />
 
     <TextView
@@ -49,9 +35,26 @@
         android:text="@string/rssi"
         android:textColor="@android:color/black"
         android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/device_mac_address"
         app:layout_constraintTop_toBottomOf="@+id/device_name"
+        tools:ignore="RtlSymmetry" />
+
+    <TextView
+        android:id="@+id/device_mac_address"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="30dp"
+        android:paddingTop="5dp"
+        android:paddingBottom="5dp"
+        android:text="@string/mac_address"
+        android:textColor="@android:color/black"
+        android:textSize="16sp"
+        android:textStyle="italic"
+        app:layout_constraintTop_toBottomOf="@+id/device_name"
+        app:layout_constraintStart_toEndOf="@+id/device_signal_level"
+        app:layout_constraintBottom_toBottomOf="parent"
         tools:ignore="RtlSymmetry" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

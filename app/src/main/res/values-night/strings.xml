@@ -24,8 +24,7 @@
     <string name="empty_characteristic_value">No value</string>
     <string name="checkbox_refresh_cache">Clear GATT-cache</string>
     <string name="checkbox_refresh_cache_tip">
-        Clear local cache for discovering GATT-data from remote device.
-        Otherwise keep this box unchecked.
+        Clear cache for discovering GATT-data from remote device (not from the cache itself).
     </string>
     <string name="Disable">Off</string>
 </resources>
