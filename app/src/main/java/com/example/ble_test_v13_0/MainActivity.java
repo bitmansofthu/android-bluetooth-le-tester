@@ -53,7 +53,7 @@ enum BT_CONNECTION_STATE {
     SCANNING,
     CONNECTING,
     CONNECTED,
-    DISCONNECTING, // use this event for the disconnect-event triggered by this local device (me)
+    DISCONNECTING, // use this event for the disconnect-event triggered by this local device (user)
     DISCONNECTED
 }
 
@@ -180,14 +180,33 @@ public class MainActivity extends AppCompatActivity {
                     mDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                     if (mDevice.getBondState() == BluetoothDevice.BOND_BONDED) {
                         // device paired
-                        //Log.d("bt", "bonded");
+                        Log.d("BT", "BONDED");
                     }
                     else if(mDevice.getBondState() == BluetoothDevice.BOND_BONDING) {
-                        //Log.d("bt", "bonding");
+                        Log.d("BT", "BONDING");
+                    }
+                    else if(mDevice.getBondState() == BluetoothDevice.BOND_NONE) {
+                        Log.d("BT", "NO BOND");
                     }
                 }
                 else if (BluetoothDevice.ACTION_PAIRING_REQUEST.equals(action)){
                  // todo: close 'Connecting' alert dialog
+                    Log.d("BT", "PAIRING REQUEST");
+                }
+                else if (BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(action)){
+                    mDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                    if (mDevice.getBondState() == BluetoothDevice.BOND_BONDED) {
+                        // device paired
+                        Log.d("BT", "BONDED");
+                    }
+                    else if(mDevice.getBondState() == BluetoothDevice.BOND_BONDING) {
+                        Log.d("BT", "BONDING");
+                    }
+                    else if(mDevice.getBondState() == BluetoothDevice.BOND_NONE) {
+                        Log.d("BT", "NO BOND");
+                    }
+                }
+                else if (BluetoothDevice.ACTION_ACL_DISCONNECTED.equals(action)){
                 }
             }
         };
@@ -599,7 +618,21 @@ public class MainActivity extends AppCompatActivity {
                         GattCharacteristicsValueReceived(characteristic,
                                 characteristic.getValue()));
             } else {
-                Log.w(TAG, "onCharacteristicRead failed. Status: " + status);
+                String failureCode;
+                if (status == 137){
+                    failureCode = "GATT Authentication failure";
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Read failed: "
+                            + failureCode, Toast.LENGTH_LONG).show());
+
+                    Log.w(TAG, "onCharacteristicRead failed. Status: " + status);
+                }
+                else {
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                            "Read failed: error code = " + status,
+                            Toast.LENGTH_LONG).show());
+
+                    Log.w(TAG, "onCharacteristicRead failed. Status: " + status);
+                }
             }
         }
 
@@ -617,7 +650,22 @@ public class MainActivity extends AppCompatActivity {
                         (fm.findFragmentByTag("CONNECTION"))). //todo: CONNECTION -> const
                         GattCharacteristicsValueReceived(characteristic, value));
             } else {
-                Log.w(TAG, "onCharacteristicRead failed. Status: " + status);
+                String failureCode;
+                if (status == 137){
+                    failureCode = "GATT Authentication failure";
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Read failed: "
+                                    + failureCode, Toast.LENGTH_LONG).show());
+
+                    Log.w(TAG, "onCharacteristicRead failed. Status: " + status);
+                }
+                else {
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this,
+                            "Read failed: error code = " + status,
+                            Toast.LENGTH_LONG).show());
+
+                    Log.w(TAG, "onCharacteristicRead failed. Status: " + status);
+                }
+
             }
         }
 
@@ -631,7 +679,6 @@ public class MainActivity extends AppCompatActivity {
                         (fm.findFragmentByTag("CONNECTION"))). //todo: CONNECTION -> const
                         GattCharacteristicsValueReceived(characteristic, value));
 
-            Log.w(TAG, "onCharacteristicChanged"); // todo
         }
 
         // Callback triggered as a result of a remote characteristic notification.
@@ -645,7 +692,6 @@ public class MainActivity extends AppCompatActivity {
                     GattCharacteristicsValueReceived(characteristic,
                     characteristic.getValue()));
 
-            Log.w(TAG, "onCharacteristicChanged"); // todo
         }
 
         @Override
@@ -756,7 +802,7 @@ public class MainActivity extends AppCompatActivity {
             //    its views.
             runOnUiThread(() -> {
 
-                dialogConnecting.hide();
+                dialogConnecting.dismiss();
 
                 // show Connection-fragment instead of Scanning-fragment
                 fm = getSupportFragmentManager();
@@ -786,7 +832,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.w(TAG, "Failed to connect to remote device. Canceled by timeout.");
 
                 runOnUiThread(() -> {
-                    dialogConnecting.hide();
+                    dialogConnecting.dismiss();
                     Toast.makeText(MainActivity.this, "Failed to connect to the remote device!",
                             Toast.LENGTH_SHORT).show();
 
@@ -801,12 +847,13 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         else if (stateChange == BT_CONNECTION_STATE.DISCONNECTED){
-            if (mConnectionState == BT_CONNECTION_STATE.DISCONNECTING){
+            if (mConnectionState == BT_CONNECTION_STATE.DISCONNECTING ||
+                mConnectionState == BT_CONNECTION_STATE.CONNECTED){
                 // Normal local disconnecting to the remote device succeeded:
                 // CONNECTED -> DISCONNECTING-event -> DISCONNECTING -> DISCONNECTED-event
                 // (when using DISCONNECT-button).
-
-                btGatt.close();
+//todo: explain connected to disconnected
+                if (btGatt != null) { btGatt.close(); }
 
                 // Show Scanning-fragment instead of Connection-fragment
                 runOnUiThread(() -> {
@@ -829,7 +876,7 @@ public class MainActivity extends AppCompatActivity {
                 // 2) We were in connected state, but we lost connection from remote-device
                 //    (e.g. weak signal or remote device was unpowered).
                 //     CONNECTED -> DISCONNECTED-event,
-
+//todo: case 2) is it true anymore?
                 // BT_CONNECTION_STATE.DISCONNECTED event is always triggered from BT-interface (see callback)
                 // so BT-interface is alive. No specific reset for interface is needed here...
 
@@ -839,7 +886,7 @@ public class MainActivity extends AppCompatActivity {
                 //    Only the original thread that created a view hierarchy can touch
                 //    its views.
                 runOnUiThread(() -> {
-                    dialogConnecting.hide();
+                    dialogConnecting.dismiss();
                     Toast.makeText(MainActivity.this, "Failed to connect to the remote device!",
                             Toast.LENGTH_SHORT).show();
                 });
