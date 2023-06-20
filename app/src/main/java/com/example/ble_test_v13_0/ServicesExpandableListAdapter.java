@@ -27,7 +27,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     private final Context context;
     private final ArrayList<ServiceModel> groupArrayList;
     private final ArrayList<ArrayList<CharacteristicsModel>> childArrayList;
-    private final LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener;
+    private final LVChildItemConfirmCharacteristicOnClickListener confirmCharacteristicOnClickListener;
     private final LvChildItemRbOnClickListener rwnRadioButtonOnClickListener;
 
     private final LvChildItemFormatSpinnerOnItemSelected formatSpinnerOnItemSelected;
@@ -46,7 +46,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     private static class ViewHolderChild {
         TextView CharUuidExpandedView; //todo: more descriptive naming
         TextView CharNameExpandedView;
-        Button CharReadExpandedView;
+        Button CharConfirmExpandedView;
         EditText CharValueExpandedView;
         RadioGroup radioGroupReadWriteNotify;
         RadioButton radioButtonDisableAccesses;
@@ -58,13 +58,13 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
 
     public ServicesExpandableListAdapter(Context context, ArrayList<ServiceModel> groupArrayList,
                                          ArrayList<ArrayList<CharacteristicsModel>> childArrayList,
-                                         LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener,
+                                         LVChildItemConfirmCharacteristicOnClickListener confirmCharacteristicOnClickListener,
                                          LvChildItemRbOnClickListener rwnRadioButtonOnClickListener,
                                          LvChildItemFormatSpinnerOnItemSelected formatSpinnerOnItemSelected) {
         this.context = context;
         this.groupArrayList = groupArrayList;
         this.childArrayList = childArrayList;
-        this.readCharacteristicOnClickListener = readCharacteristicOnClickListener;
+        this.confirmCharacteristicOnClickListener = confirmCharacteristicOnClickListener;
         this.rwnRadioButtonOnClickListener = rwnRadioButtonOnClickListener;
         this.formatSpinnerOnItemSelected = formatSpinnerOnItemSelected;
         editableValue = "";
@@ -124,7 +124,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
             viewHolder = new ViewHolderParent();
 
             LayoutInflater layoutInflater = (LayoutInflater) this.context.
-                    getSystemService(Context.LAYOUT_INFLATER_SERVICE); //todo: -> constructor
+                    getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 
             rowView = layoutInflater.inflate(R.layout.list_service_item_view, null);
 
@@ -189,8 +189,8 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
                     android.R.layout.simple_list_item_1, mSpinnerFormatItems);
             viewHolderChild.spinnerFormatSelection.setAdapter(spinnerAdapter);
 
-            viewHolderChild.CharReadExpandedView = rowView.
-                    findViewById(R.id.read_characteristics_value);
+            viewHolderChild.CharConfirmExpandedView = rowView.
+                    findViewById(R.id.confirm_characteristics_value);
 
             viewHolderChild.CharValueExpandedView = rowView.
                     findViewById(R.id.characteristic_value);
@@ -220,8 +220,8 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
         }
         else{ viewHolderChild.radioButtonNotifyAccess.setVisibility(View.VISIBLE);}
 
-        viewHolderChild.CharReadExpandedView.setOnClickListener(
-                v -> readCharacteristicOnClickListener.onClick(groupPosition,
+        viewHolderChild.CharConfirmExpandedView.setOnClickListener(
+                v -> confirmCharacteristicOnClickListener.onClick(groupPosition,
                         childPosition,
                         characteristic.getReadChecked(),
                         characteristic.getWriteChecked(),
@@ -306,9 +306,9 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
             if (!viewHolderChild.radioButtonDisableAccesses.isChecked()){
                 viewHolderChild.radioButtonDisableAccesses.setChecked(true);
             }
-            if (viewHolderChild.CharReadExpandedView.getVisibility() ==
+            if (viewHolderChild.CharConfirmExpandedView.getVisibility() ==
                     View.VISIBLE){
-                viewHolderChild.CharReadExpandedView.setVisibility(View.INVISIBLE);
+                viewHolderChild.CharConfirmExpandedView.setVisibility(View.INVISIBLE);
             }
         }
 
@@ -318,12 +318,12 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
                 viewHolderChild.radioButtonReadAccess.setChecked(true);
             }
 
-            if (viewHolderChild.CharReadExpandedView.getVisibility() ==
+            if (viewHolderChild.CharConfirmExpandedView.getVisibility() ==
                     View.INVISIBLE){
-                viewHolderChild.CharReadExpandedView.setVisibility(View.VISIBLE);
+                viewHolderChild.CharConfirmExpandedView.setVisibility(View.VISIBLE);
             }
 
-            viewHolderChild.CharReadExpandedView.setText
+            viewHolderChild.CharConfirmExpandedView.setText
                     (R.string.characteristic_confirm_request);
         }
 
@@ -333,11 +333,11 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
                 viewHolderChild.radioButtonWriteAccess.setChecked(true);
             }
 
-            if (viewHolderChild.CharReadExpandedView.getVisibility() ==
+            if (viewHolderChild.CharConfirmExpandedView.getVisibility() ==
                     View.INVISIBLE){
-                viewHolderChild.CharReadExpandedView.setVisibility(View.VISIBLE);
+                viewHolderChild.CharConfirmExpandedView.setVisibility(View.VISIBLE);
             }
-            viewHolderChild.CharReadExpandedView.setText
+            viewHolderChild.CharConfirmExpandedView.setText
                     (R.string.characteristic_confirm_write);
         }
 
@@ -347,8 +347,8 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
                 viewHolderChild.radioButtonNotifyAccess.setChecked(true);
             }
 
-            if (viewHolderChild.CharReadExpandedView.getVisibility() == View.VISIBLE){
-                viewHolderChild.CharReadExpandedView.setVisibility(View.INVISIBLE);
+            if (viewHolderChild.CharConfirmExpandedView.getVisibility() == View.VISIBLE){
+                viewHolderChild.CharConfirmExpandedView.setVisibility(View.INVISIBLE);
             }
         }
 

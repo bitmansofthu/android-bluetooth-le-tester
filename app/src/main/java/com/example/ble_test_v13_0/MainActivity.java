@@ -38,7 +38,6 @@ import static android.bluetooth.BluetoothGatt.GATT_SUCCESS;
 import static android.content.ContentValues.TAG;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;

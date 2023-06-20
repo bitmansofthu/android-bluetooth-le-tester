@@ -510,14 +510,16 @@ public class ConnectedFragment extends Fragment {
                 expandableServicesAdapter).notifyDataSetChanged();
     };
 
-    // onClick-handler for ACKnowledge button.
-    // When ACK for some characteristics-item is clicked on ServicesExpandableList,
+    // onClick-handler for Confirmation-button.
+    // When button for some characteristics-item is clicked on ServicesExpandableList,
     // content of the attribute will be read/write from/to the remote device depending on,
     // which radio-button (read or write) is checked.
-    // If notification radio-button is checked, pressing ACK-button
-    // doesn't have any effect.
+    // In the case of read, the text of the button is 'Request'.
+    // In the case of write, the text of the button is 'Send'.
+    // If notification radio-button is checked, Confirmation-button
+    // is invisible.
     @SuppressLint("MissingPermission")
-    LVChildItemReadCharacteristicOnClickListener readCharacteristicOnClickListener =
+    LVChildItemConfirmCharacteristicOnClickListener confirmCharacteristicOnClickListener =
         (groupPosition, childPosition,
          read_access_checked,
          write_access_checked, typedValue,
@@ -593,14 +595,16 @@ public class ConnectedFragment extends Fragment {
         servicesExpandableListView = fragment_view.findViewById(R.id.Services_expandableListView);
 
         // Create the adapter for ExpandableListView by giving desired data-set
-        // (service list and characteristic list), and register OnClick-listener
-        // for reading GATT/ATT characteristics attribute values.
-        // Listener is published via new interface LVChildItemReadCharacteristicOnClickListener,
-        // for avoiding to keep listener inside the adapter (otherwise hard to search from the code
-        // where on earth the listener is located...)
+        // (service list and characteristic list), and register OnClick and OnItemSelected-listeners
+        // for controlling reading, writing and sending notifications for GATT/ATT characteristics
+        // attribute values as well as changing the format (HEX, ASCII etc).
+        // Listeners are published via interfaces for avoiding to keep listeners inside the adapter
+        // (otherwise hard to search from the code, where on earth the listener is located...)
+        // See interfaces: LVChildItemConfirmCharacteristicOnClickListener,
+        // LvChildItemRbOnClickListener and LvChildItemFormatSpinnerOnItemSelected
         expandableServicesAdapter = new ServicesExpandableListAdapter(this_context,
                 serviceModelArrayList, characteristicsModelArrayList,
-                readCharacteristicOnClickListener,
+                confirmCharacteristicOnClickListener,
                 rwnRadioButtonOnClickListener,
                 formatSpinnerOnItemSelected);
 

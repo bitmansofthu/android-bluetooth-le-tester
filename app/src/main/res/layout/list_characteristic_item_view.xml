@@ -112,7 +112,7 @@
         app:layout_constraintTop_toBottomOf="@id/radioGroupReadWriteNotify" />
 
     <Button
-        android:id="@+id/read_characteristics_value"
+        android:id="@+id/confirm_characteristics_value"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="48dp"
