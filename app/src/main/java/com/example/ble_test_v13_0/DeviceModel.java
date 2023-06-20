@@ -23,6 +23,5 @@ public class DeviceModel {
     public int getSignalLevel() {
         return this.signal;
     }
-    public void setSignalLevel(int signal) { this.signal = signal; }
 
 }

@@ -4,7 +4,6 @@ import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
 
 import android.annotation.SuppressLint;
-import android.bluetooth.BluetoothDevice;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
@@ -24,7 +23,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.CompoundButton;
 import android.widget.ProgressBar;
 
 import java.util.ArrayList;
@@ -67,7 +65,7 @@ public class ScanningFragment extends Fragment {
 
     // mDeviceAddresses contains addresses (unique string-formatted 48-bit address)
     // for detected devices. This is excellent key for selecting corresponding device from
-    // DeviceModel-list (mdevices).
+    // DeviceModel-list (mDevices).
     // Notice that even though these two lists could be combined also to Hashmap,
     // selecting of the device to be connected is index-based, not key-based
     // (see RVItemDeviceOnLongClickListener). Well, LinkedHashMap could be used...
@@ -156,13 +154,11 @@ public class ScanningFragment extends Fragment {
     @Override
     public void onStop() {
         super.onStop();
-        System.out.println("onStop scan fragment"); //todo
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        System.out.println("onDestroy scan fragment");
     }
 
     // This method is called when the fragment is no longer connected to the Activity
@@ -170,13 +166,11 @@ public class ScanningFragment extends Fragment {
     @Override
     public void onDetach() {
         super.onDetach();
-        System.out.println("onDetach scan fragment");
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        System.out.println("onPause scan fragment");
     }
 
     // Device scan callback.
@@ -190,9 +184,6 @@ public class ScanningFragment extends Fragment {
                     // or modify existing device by RSSI or logical name
                     // (if name was not available on first scan-result for this device)
                     addOrModifyDevice(result);
-
-                    BluetoothDevice device = result.getDevice(); //todo: remove
-                    int signal = result.getRssi();
                 }
             };
 
@@ -302,7 +293,7 @@ public class ScanningFragment extends Fragment {
         if ( (deviceIndex >= 0) && (deviceIndex < mDevices.size()) ){
             // existing device detected
             mDevices.set(deviceIndex, device);
-            // notify the adapter for modification of the last item
+            // notify the adapter for modification of the detected item
             devicesAdapter.notifyItemChanged(deviceIndex);
         }
     }

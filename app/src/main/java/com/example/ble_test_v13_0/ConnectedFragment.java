@@ -134,18 +134,9 @@ public class ConnectedFragment extends Fragment {
                     BT_CONNECTION_STATE.CONNECTED) {
 
                 // DISCONNECTING-event is generated only, when normal local disconnect is done.
-                // E.g disconnect from remote device is detected by BT gatt-callback,
-                // causing DISCONNECTED-event to be generated.
                 ((MainActivity) requireActivity()).
                         HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTING);
             }
-            //else
-            // What about, if the state != CONNECTED ?
-            // Fragment should be closed somehow.
-            //I did some test where I powered off the remote BLE-device.
-            // -> onConnectionStateChange-event with newState STATE_DISCONNECTED
-            // -> causes ConnectedFragment to be closed from FragmentTransaction MainActivity.
-            // OK!
         });
 
         discoverGattServices();
@@ -156,7 +147,9 @@ public class ConnectedFragment extends Fragment {
     @Override
     public void onDetach() {
         super.onDetach();
-        System.out.println("onDetach Connection fragment"); //todo
+    }
+    public void onDestroy() {
+        super.onDestroy();
     }
 
     @SuppressLint("MissingPermission")
@@ -185,7 +178,7 @@ public class ConnectedFragment extends Fragment {
                         get(groupPos).
                             get(childPosition).setCharacteristicsValue(valueInBinary);
 
-                    // NOTICE: cast to (BaseExpandableListAdapter) needed
+                    // NOTICE: cast to (BaseExpandableListAdapter) is needed
                     // for accessing notifyDataSetChanged !!!
                     ((BaseExpandableListAdapter)
                             expandableServicesAdapter).notifyDataSetChanged();
@@ -562,7 +555,7 @@ public class ConnectedFragment extends Fragment {
                                         BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
 
                         if (retValue != BluetoothStatusCodes.SUCCESS){
-                            Log.w(TAG, "Write failed"); // todo: what to do?
+                            Log.w("BLE", "Write failed");
                         }
                     }
                     else{
@@ -572,7 +565,7 @@ public class ConnectedFragment extends Fragment {
                                 btGatt.writeCharacteristic(characteristic);
 
                         if (!retValue){
-                            Log.w(TAG, "Write failed"); // todo: what to do?
+                            Log.w("BLE", "Write failed");
                         }
                     }
 
@@ -613,7 +606,7 @@ public class ConnectedFragment extends Fragment {
 
         servicesExpandableListView.setAdapter(expandableServicesAdapter);
 
-        //todo: unregister in onDestroy
+        //todo: unregister in onDestroy ??
         expandableServicesAdapter.registerDataSetObserver(new DataSetObserver() {
             @Override
             public void onChanged() {

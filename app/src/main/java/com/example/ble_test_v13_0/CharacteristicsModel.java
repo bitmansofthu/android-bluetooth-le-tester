@@ -8,8 +8,7 @@ public class CharacteristicsModel {
     private byte[] characteristicsValue;
 
     // Radio group-parameter in such is useless here,
-    // but important for giving correct amount of UI-components
-    // (see ServicesExpandableListAdapter:getChildrenCount)
+    // instead it's informative (radiobutton group exists in UI)
     private final boolean radioButtonGroup; //read/write/notification bound inside radio group
 
     private Boolean disableAccesses; // if true, read/write/notify are all disabled
@@ -23,8 +22,7 @@ public class CharacteristicsModel {
     private int format; // selected format (unsigned integer8, string etc.)
 
     // confirmAction-parameter (for Confirmation-button for Read-request/Send) in such is useless here,
-    // but important for giving correct amount of UI-components
-    // (see ServicesExpandableListAdapter:getChildrenCount)
+    // instead it's informative (Confirmation-button exists in UI)
     private final boolean confirmAction;
 
     public CharacteristicsModel(String characteristicsUUID,

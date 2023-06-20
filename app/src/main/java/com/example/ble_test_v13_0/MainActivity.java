@@ -32,7 +32,6 @@ import android.widget.Toast;
 
 import static android.Manifest.permission.BLUETOOTH_SCAN;
 import static android.Manifest.permission.BLUETOOTH_CONNECT;
-import static android.bluetooth.BluetoothDevice.PHY_LE_1M_MASK;
 import static android.bluetooth.BluetoothDevice.PHY_LE_2M_MASK;
 import static android.bluetooth.BluetoothDevice.TRANSPORT_LE;
 import static android.bluetooth.BluetoothGatt.GATT_SUCCESS;
@@ -82,7 +81,8 @@ public class MainActivity extends AppCompatActivity {
 
     FragmentManager fm;
     FragmentTransaction ft;
-
+    final String ScanFragmentTag = "SCAN";
+    final String ConnectedFragmentTag = "CONNECTION";
     private Boolean clearGattInformationCache;
 
     public void setMyBTDevice(BluetoothDevice mMyDevice) {
@@ -116,7 +116,7 @@ public class MainActivity extends AppCompatActivity {
             ft = fm.beginTransaction();
             ft
                 .setReorderingAllowed(true)
-                .replace(R.id.fragment_container_view, ScanningFragment.class, null, "SCAN")
+                .replace(R.id.fragment_container_view, ScanningFragment.class, null, ScanFragmentTag)
                 .commit();
         }
 
@@ -135,7 +135,7 @@ public class MainActivity extends AppCompatActivity {
             // Installation of this application in HW not supporting Low Energy BT (>= Ble v4.0)
             // is not allowed...
             Toast.makeText(this, "BLE not supported!", Toast.LENGTH_LONG).show();
-            Log.w(TAG, "Bluetooth Low energy not supported for this device");
+            Log.w("BLE", "Bluetooth Low energy not supported for this device");
             finish();
             return;
         }
@@ -143,7 +143,7 @@ public class MainActivity extends AppCompatActivity {
         if (!btAdapter.isEnabled()) {
             Toast.makeText(MainActivity.this, "Bluetooth not enabled! Enable it from Settings.",
                     Toast.LENGTH_LONG).show();
-            Log.w(TAG, "Bluetooth not enabled! Enable it from Settings.");
+            Log.w("BLE", "Bluetooth not enabled! Enable it from Settings.");
 
             finish();
             return;
@@ -156,17 +156,11 @@ public class MainActivity extends AppCompatActivity {
         // Settings for Connecting-dialog
         createProgressSpinnerForConnectingAlertDialog();
 
-        boolean success = false; // todo
-
-        try {
-            success = readBtReservedUUIDsInYamlFiles("service_uuids.yaml");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        try {
+        boolean success = readBtReservedUUIDsInYamlFiles("service_uuids.yaml");
+        if (!success) { Log.e("BLE","Failed to read service_uuids.yaml");}
+        else{
             success = readBtReservedUUIDsInYamlFiles("characteristic_uuids.yaml");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            if (!success) { Log.e("BLE","Failed to read characteristic_uuids.yaml");}
         }
 
         receiver = new BroadcastReceiver() {
@@ -174,48 +168,36 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
-                Log.d("BT", "onReceive: " + action);
+                Log.d("BLE", "onReceive: " + action);
 
                 if (BluetoothDevice.ACTION_ACL_CONNECTED.equals(action)){
-                    mDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                    if (mDevice.getBondState() == BluetoothDevice.BOND_BONDED) {
-                        // device paired
-                        Log.d("BT", "BONDED");
-                    }
-                    else if(mDevice.getBondState() == BluetoothDevice.BOND_BONDING) {
-                        Log.d("BT", "BONDING");
-                    }
-                    else if(mDevice.getBondState() == BluetoothDevice.BOND_NONE) {
-                        Log.d("BT", "NO BOND");
-                    }
                 }
                 else if (BluetoothDevice.ACTION_PAIRING_REQUEST.equals(action)){
                  // todo: close 'Connecting' alert dialog
-                    Log.d("BT", "PAIRING REQUEST");
+                    Log.d("BLE", "PAIRING REQUEST");
                 }
                 else if (BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(action)){
                     mDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                     if (mDevice.getBondState() == BluetoothDevice.BOND_BONDED) {
                         // device paired
-                        Log.d("BT", "BONDED");
+                        Log.d("BLE", "BONDED");
                     }
                     else if(mDevice.getBondState() == BluetoothDevice.BOND_BONDING) {
-                        Log.d("BT", "BONDING");
+                        Log.d("BLE", "BONDING");
                     }
                     else if(mDevice.getBondState() == BluetoothDevice.BOND_NONE) {
-                        Log.d("BT", "NO BOND");
+                        Log.d("BLE", "NO BOND");
                     }
                 }
                 else if (BluetoothDevice.ACTION_ACL_DISCONNECTED.equals(action)){
                 }
             }
         };
-    }
+    } // onCreate
 
     @Override
     protected void onStart() {
         super.onStart();
-        System.out.println("onStart main"); //todo: remove
 
         final IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
@@ -230,13 +212,11 @@ public class MainActivity extends AppCompatActivity {
     public void onStop() {
         super.onStop();
         unregisterReceiver(receiver);
-        System.out.println("onStop main"); //todo: remove
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        System.out.println("onPause main");
     }
 
     @Override
@@ -245,8 +225,6 @@ public class MainActivity extends AppCompatActivity {
         if (dialogConnecting != null){
             dialogConnecting.dismiss();
         }
-
-        System.out.println("onDestroy main");
     }
 
     @Override
@@ -258,8 +236,6 @@ public class MainActivity extends AppCompatActivity {
             // 2) disconnect-button pressed inside Connected-fragment
             // Both ways cause the Connected-fragment being replaced by Scan-fragment
             // (see BT gatt-callback)
-            // Disconnection triggered by remote device is detected by BT gatt-callback,
-            // causing DISCONNECTED-event to be generated.
             HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTING);
         }
         else if (mConnectionState == BT_CONNECTION_STATE.NOT_SCANNING) {
@@ -279,7 +255,7 @@ public class MainActivity extends AppCompatActivity {
     //   id: org.bluetooth.service.generic_access
     // - uuid: 0x1801
     // ...
-    private boolean readBtReservedUUIDsInYamlFiles(String fileName) throws IOException {
+    private boolean readBtReservedUUIDsInYamlFiles(String fileName) {
         //AssetManager assetManager = MainActivity.this.getAssets();
 
         BufferedReader br = null;
@@ -311,8 +287,7 @@ public class MainActivity extends AppCompatActivity {
 
                 if (line_nbr == 1) {
                     if (!line_content.contentEquals("uuids:")){
-                        Log.w(TAG, "First line is incorrect. Do not take this YAML-file into usage.");
-
+                        Log.w("BLE", "First line is incorrect. Do not take this YAML-file into usage.");
                         return false;
                     }
                     else{
@@ -331,7 +306,7 @@ public class MainActivity extends AppCompatActivity {
 
                             if (!uuid_key.equals("uuid")){
                                 // should always be 'uuid'
-                                Log.w(TAG, "Wrong key in line " + line_nbr  + ". Should be 'uuid'.");
+                                Log.w("BLE", "Wrong key in line " + line_nbr  + ". Should be 'uuid'.");
                                 return false;
                             }
 
@@ -345,7 +320,7 @@ public class MainActivity extends AppCompatActivity {
                         else{
                             // List indicator '-' not found on row, where it should be located.
                             // Stop parsing.
-                            Log.w(TAG, "List indicator not found. Do not take this YAML-file into usage.");
+                            Log.w("BLE", "List indicator not found. Do not take this YAML-file into usage.");
                             return false;
                         }
                     }
@@ -360,7 +335,7 @@ public class MainActivity extends AppCompatActivity {
 
                         if (!name_key.equals("name")){
                             // should always be 'name'
-                            Log.w(TAG, "Wrong key in line " + line_nbr + ". Should be 'name'.");
+                            Log.w("BLE", "Wrong key in line " + line_nbr + ". Should be 'name'.");
                             return false;
                         }
 
@@ -377,7 +352,7 @@ public class MainActivity extends AppCompatActivity {
 
                         if (!id_key.equals("id")){
                             // should always be 'id'
-                            Log.w(TAG, "Wrong key in line " + line_nbr + ". Should be 'id'.");
+                            Log.w("BLE", "Wrong key in line " + line_nbr + ". Should be 'id'.");
                             return false;
                         }
 
@@ -399,15 +374,15 @@ public class MainActivity extends AppCompatActivity {
                 line_nbr++;
             }
 
-        } catch (IOException e) {
-            Log.w(TAG, "Failed to open Yaml-file");
-            throw new RuntimeException(e);
+        } catch (Exception ignored) {
+            Log.w("BLE", "Failed to open Yaml-file " + fileName);
+            return false;
         } finally {
             if (br != null) {
                 try {
                     br.close();
-                } catch (IOException e) {
-                    Log.w(TAG, "Failed to close Yaml-file");
+                } catch (Exception ignored) {
+                    Log.w("BLE", "Failed to close Yaml-file " + fileName);
                 }
             }
         }
@@ -420,9 +395,11 @@ public class MainActivity extends AppCompatActivity {
     private void controlConnectingTimer(BT_CONNECTION_STATE connectionState) {
         if (connectionState == BT_CONNECTION_STATE.CONNECTING){
             connection_handler.postDelayed(() -> {
-                // after timeout, start to disconnect (if still connecting)
+                // after timeout, disconnect (if still connecting)
+                // Actually there is no connection to be disconnected, but there is need to
+                // inform the user and switch to Scan-state
                 if (mConnectionState == BT_CONNECTION_STATE.CONNECTING) {
-                    HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTING);
+                    HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTED);
                 }
             }, CONNECTING_PERIOD);
         }
@@ -579,7 +556,7 @@ public class MainActivity extends AppCompatActivity {
                                  int txPhy,
                                  int rxPhy,
                                  int status){
-            Log.w(TAG, "onPhyUpdate: txPhy: " + txPhy +
+            Log.w("BLE", "onPhyUpdate: txPhy: " + txPhy +
                             " rxPhy: " + rxPhy +
                             " status: " + status);
         }
@@ -591,7 +568,7 @@ public class MainActivity extends AppCompatActivity {
 
             //btGatt.requestMtu(5*23);
 
-            Log.w(TAG, "onMtuChanged: status: " + status +
+            Log.w("BLE", "onMtuChanged: status: " + status +
                                     " | mtu: " + mtu);
         }
 
@@ -599,9 +576,9 @@ public class MainActivity extends AppCompatActivity {
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             if (status == GATT_SUCCESS) {
                 runOnUiThread(() -> ((ConnectedFragment) Objects.requireNonNull
-                        (fm.findFragmentByTag("CONNECTION"))).GattServicesDiscovered());
+                        (fm.findFragmentByTag(ConnectedFragmentTag))).GattServicesDiscovered());
             } else {
-                Log.w(TAG, "onServicesDiscovered not successful. Status: " + status);
+                Log.w("BLE", "onServicesDiscovered not successful. Status: " + status);
             }
         }
 
@@ -614,7 +591,7 @@ public class MainActivity extends AppCompatActivity {
         {
             if (status == GATT_SUCCESS) {
                 runOnUiThread(() -> ((ConnectedFragment) Objects.requireNonNull
-                        (fm.findFragmentByTag("CONNECTION"))). //todo: CONNECTION -> const
+                        (fm.findFragmentByTag(ConnectedFragmentTag))).
                         GattCharacteristicsValueReceived(characteristic,
                                 characteristic.getValue()));
             } else {
@@ -624,14 +601,14 @@ public class MainActivity extends AppCompatActivity {
                     runOnUiThread(() -> Toast.makeText(MainActivity.this, "Read failed: "
                             + failureCode, Toast.LENGTH_LONG).show());
 
-                    Log.w(TAG, "onCharacteristicRead failed. Status: " + status);
+                    Log.w("BLE", "onCharacteristicRead failed. Status: " + status);
                 }
                 else {
                     runOnUiThread(() -> Toast.makeText(MainActivity.this,
                             "Read failed: error code = " + status,
                             Toast.LENGTH_LONG).show());
 
-                    Log.w(TAG, "onCharacteristicRead failed. Status: " + status);
+                    Log.w("BLE", "onCharacteristicRead failed. Status: " + status);
                 }
             }
         }
@@ -647,7 +624,7 @@ public class MainActivity extends AppCompatActivity {
         {
             if (status == GATT_SUCCESS) {
                 runOnUiThread(() -> ((ConnectedFragment) Objects.requireNonNull
-                        (fm.findFragmentByTag("CONNECTION"))). //todo: CONNECTION -> const
+                        (fm.findFragmentByTag(ConnectedFragmentTag))).
                         GattCharacteristicsValueReceived(characteristic, value));
             } else {
                 String failureCode;
@@ -656,14 +633,14 @@ public class MainActivity extends AppCompatActivity {
                     runOnUiThread(() -> Toast.makeText(MainActivity.this, "Read failed: "
                                     + failureCode, Toast.LENGTH_LONG).show());
 
-                    Log.w(TAG, "onCharacteristicRead failed. Status: " + status);
+                    Log.w("BLE", "onCharacteristicRead failed. Status: " + status);
                 }
                 else {
                     runOnUiThread(() -> Toast.makeText(MainActivity.this,
                             "Read failed: error code = " + status,
                             Toast.LENGTH_LONG).show());
 
-                    Log.w(TAG, "onCharacteristicRead failed. Status: " + status);
+                    Log.w("BLE", "onCharacteristicRead failed. Status: " + status);
                 }
 
             }
@@ -676,7 +653,7 @@ public class MainActivity extends AppCompatActivity {
                                 BluetoothGattCharacteristic characteristic,
                                 byte[] value){
                 runOnUiThread(() -> ((ConnectedFragment) Objects.requireNonNull
-                        (fm.findFragmentByTag("CONNECTION"))). //todo: CONNECTION -> const
+                        (fm.findFragmentByTag(ConnectedFragmentTag))).
                         GattCharacteristicsValueReceived(characteristic, value));
 
         }
@@ -688,7 +665,7 @@ public class MainActivity extends AppCompatActivity {
                                             BluetoothGattCharacteristic characteristic){
 
             runOnUiThread(() -> ((ConnectedFragment) Objects.requireNonNull
-                    (fm.findFragmentByTag("CONNECTION"))). //todo: CONNECTION -> const
+                    (fm.findFragmentByTag(ConnectedFragmentTag))).
                     GattCharacteristicsValueReceived(characteristic,
                     characteristic.getValue()));
 
@@ -700,10 +677,10 @@ public class MainActivity extends AppCompatActivity {
                                            int status){
             if (status != GATT_SUCCESS){
                 runOnUiThread(() -> ((ConnectedFragment) Objects.requireNonNull
-                        (fm.findFragmentByTag("CONNECTION"))). //todo: CONNECTION -> const
+                        (fm.findFragmentByTag(ConnectedFragmentTag))).
                         GattCharacteristicsValueWriteFailed(characteristic));
 
-                Log.w(TAG, "onCharacteristicWrite: writing new value to peripheral failed");
+                Log.w("BLE", "onCharacteristicWrite: writing new value to peripheral failed");
             }
         }
 
@@ -754,7 +731,7 @@ public class MainActivity extends AppCompatActivity {
 
                 // Start connecting to the remote device.
                 if (btGatt != null){
-                    // Close gatt-interface (if there is any interface available anymore).
+                    // Close gatt-interface before opening it (if there is any interface available).
                     // BT-interface might be stuck.
                     btGatt.close();
                 }
@@ -767,12 +744,12 @@ public class MainActivity extends AppCompatActivity {
                     // clean GATT-services/characteristics stored locally on cache-file
                     boolean refresh = refreshDeviceCache(btGatt);
                     if (refresh){
-                        Log.w(TAG, "Local Cache for GATT-information refreshed");
+                        Log.w("BLE", "Local Cache for GATT-information refreshed");
                         Toast.makeText(MainActivity.this, "Local Cache for GATT-information refreshed",
                                 Toast.LENGTH_LONG).show();
                     }
                     else{
-                        Log.w(TAG, "Local Cache for GATT-information not refreshed");
+                        Log.w("BLE", "Local Cache for GATT-information not refreshed");
                         Toast.makeText(MainActivity.this, "Local Cache for GATT-information " +
                                         "not successfully refreshed." +
                                         "Try again by reconnecting to your remote device.",
@@ -790,7 +767,7 @@ public class MainActivity extends AppCompatActivity {
 
             // CONNECTED-event comes from BT-interface (via Callback),
             // so we are probably now on 'non-UI' thread.
-            // Hide Connecting-dialog with runOnUiThread.
+            // Hide Connecting-dialog and change the fragment by runOnUiThread.
             //  -Runs the specified action on the UI thread:
             //    If the current thread is the UI thread,
             //    then the action is executed immediately.
@@ -810,30 +787,30 @@ public class MainActivity extends AppCompatActivity {
                 ft
                     .setReorderingAllowed(true)
                     .replace(R.id.fragment_container_view, ConnectedFragment.class, null,
-                            "CONNECTION")
+                            ConnectedFragmentTag)
                     .commit();
             });
         }
         else if (stateChange == BT_CONNECTION_STATE.DISCONNECTING){
-
-            // Disconnecting-event triggered by this local device
-
+            // Disconnecting-event triggered by this local device, after the connection is established
+            // (disconnect-button or back-button pressed)
             if (mConnectionState == BT_CONNECTION_STATE.CONNECTED) {
-                // normal disconnect (from UI) after, the connection is established
-                mConnectionState = BT_CONNECTION_STATE.DISCONNECTING;
-
                 if (btGatt != null) {
                     btGatt.disconnect();
                 }
+                mConnectionState = BT_CONNECTION_STATE.DISCONNECTING;
             }
             else {
-                // Disconnect (by timeout) before the connection is established.
+                // Disconnecting before the connection is established.
+                // This is random case (possibly Back-button pressed when connecting)
+                // Well, in that case the Connecting-dialog is visible, and any touch-events are blocked...
                 mConnectionState = BT_CONNECTION_STATE.NOT_SCANNING;
-                Log.w(TAG, "Failed to connect to remote device. Canceled by timeout.");
+                Log.w("BLE", "Failed to connect to remote device.");
 
                 runOnUiThread(() -> {
                     dialogConnecting.dismiss();
-                    Toast.makeText(MainActivity.this, "Failed to connect to the remote device!",
+
+                    Toast.makeText(MainActivity.this, "Failed to connect to the remote device! ",
                             Toast.LENGTH_SHORT).show();
 
                     if (btGatt != null){
@@ -841,56 +818,66 @@ public class MainActivity extends AppCompatActivity {
                         // BT-interface might be stuck.
                         btGatt.close();
                     }
-
                 });
-
             }
         }
         else if (stateChange == BT_CONNECTION_STATE.DISCONNECTED){
-            if (mConnectionState == BT_CONNECTION_STATE.DISCONNECTING ||
+            if (
+                // Normal local disconnecting to the remote device
+                // (when using DISCONNECT-button or Back-button)
+                mConnectionState == BT_CONNECTION_STATE.DISCONNECTING
+                    ||
+                // we lost connection from remote-device
+                // (disconnection by the user from remote, weak signal, remote device was unpowered etc)
                 mConnectionState == BT_CONNECTION_STATE.CONNECTED){
-                // Normal local disconnecting to the remote device succeeded:
-                // CONNECTED -> DISCONNECTING-event -> DISCONNECTING -> DISCONNECTED-event
-                // (when using DISCONNECT-button).
-//todo: explain connected to disconnected
+
                 if (btGatt != null) { btGatt.close(); }
 
-                // Show Scanning-fragment instead of Connection-fragment
                 runOnUiThread(() -> {
                     Toast.makeText(MainActivity.this, "Disconnected from your BLE device",
                             Toast.LENGTH_SHORT).show();
 
+                    // Show Scanning-fragment instead of Connection-fragment
                     fm = getSupportFragmentManager();
                     ft = fm.beginTransaction();
                     ft
                             .setReorderingAllowed(true)
-                            .replace(R.id.fragment_container_view, ScanningFragment.class, null, "SCAN")
+                            .replace(R.id.fragment_container_view, ScanningFragment.class, null,
+                                    ScanFragmentTag)
                             .commit();
                 });
 
             }
-            else{
-                // 1) Establishment of the connection failed (BT-interface via callback triggered this).
-                //      CONNECTING -> DISCONNECTED-event,
-                //       or
-                // 2) We were in connected state, but we lost connection from remote-device
-                //    (e.g. weak signal or remote device was unpowered).
-                //     CONNECTED -> DISCONNECTED-event,
-//todo: case 2) is it true anymore?
-                // BT_CONNECTION_STATE.DISCONNECTED event is always triggered from BT-interface (see callback)
-                // so BT-interface is alive. No specific reset for interface is needed here...
+            else if (mConnectionState == BT_CONNECTION_STATE.CONNECTING){
+                // Disconnected (by timeout) before the connection is established.
 
-                //Hide Connecting-dialog in separate thread. Otherwise next error:
-                //    W/BluetoothGatt: Unhandled exception in callback
-                //    android.view.ViewRootImpl$CalledFromWrongThreadException:
-                //    Only the original thread that created a view hierarchy can touch
-                //    its views.
+                Log.w("BLE", "Failed to connect to the remote device. Canceled by timeout.");
+
                 runOnUiThread(() -> {
                     dialogConnecting.dismiss();
-                    Toast.makeText(MainActivity.this, "Failed to connect to the remote device!",
+
+                    Toast.makeText(MainActivity.this, "Failed to connect to the remote device! " +
+                                    "Canceled by timeout.",
+                            Toast.LENGTH_SHORT).show();
+
+                    if (btGatt != null){
+                        // Close gatt-interface (if there is any interface available anymore).
+                        // BT-interface might be stuck.
+                        btGatt.close();
+                    }
+                });
+            }
+            else{
+                // this is quite strange state transition...
+                runOnUiThread(() -> {
+                    dialogConnecting.dismiss();
+                    Toast.makeText(MainActivity.this, "Disconnected-event in bad state",
                             Toast.LENGTH_SHORT).show();
                 });
 
+                Log.w("BLE", "Disconnected-event in bad state");
+
+                if (btGatt != null) { btGatt.close(); } // close the socket to try to reset it
             }
 
             mConnectionState = BT_CONNECTION_STATE.NOT_SCANNING;

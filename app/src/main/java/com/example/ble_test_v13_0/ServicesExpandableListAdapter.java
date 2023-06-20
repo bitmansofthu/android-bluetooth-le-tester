@@ -77,11 +77,9 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     @Override
     public int getChildrenCount(int groupPosition) {
         if (this.childArrayList.get(groupPosition) != null){
-            //System.out.println("getChildrenCount: " + this.childArrayList.get(groupPosition).size());
             return (this.childArrayList.get(groupPosition).size());
         }
         else {
-            //System.out.println("getChildrenCount = 0"); //todo
             return 0;
         }
     }
@@ -103,7 +101,6 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
 
     @Override
     public long getChildId(int groupPosition, int childPosition) {
-        //System.out.println("getChildId = " + childPosition);
         return childPosition;
     }
 
