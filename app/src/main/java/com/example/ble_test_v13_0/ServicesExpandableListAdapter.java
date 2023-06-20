@@ -4,7 +4,6 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -200,13 +199,8 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
                     findViewById(R.id.characteristic_value);
 
             rowView.setTag(viewHolderChild); // Cache the viewHolder object inside the fresh view
-
-            //System.out.println("getChildView, convertView == NULL:" +
-            //        groupPosition + " / " + childPosition + " / " + isLastChild);
         }
         else {
-            //System.out.println("getChildView, convertView !== NULL:" +
-//                    groupPosition + " / " + childPosition + " / " + isLastChild);
             rowView = convertView;
             // View is being recycled, retrieve the viewHolder object from tag
             viewHolderChild = (ViewHolderChild) rowView.getTag();
@@ -271,7 +265,6 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
             }
         });
 
-
         viewHolderChild.CharValueExpandedView.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
@@ -285,30 +278,6 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
             }
         });
 
-        //todo: remove as useless?
-        viewHolderChild.CharValueExpandedView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                return false;
-            }
-        });
-
-        //todo: remove as useless?
-        //viewHolderChild.CharValueExpandedView.getKeyListener()
-        viewHolderChild.CharValueExpandedView.setOnKeyListener((v, keyCode, event) -> {
-            // onKey-event
-            if (!characteristic.getWriteChecked()){
-                return false;
-            }
-
-            if ((event.getAction() == KeyEvent.ACTION_DOWN) &&
-                   ( ((keyCode >= KeyEvent.KEYCODE_A) && (keyCode <= KeyEvent.KEYCODE_F)) ||
-                    ((keyCode >= KeyEvent.KEYCODE_0) && (keyCode <= KeyEvent.KEYCODE_9)) )
-            ) {
-            }
-            return false;
-        });
-
         viewHolderChild.CharUuidExpandedView.setText(characteristic.getCharacteristicsUUID());
 
         viewHolderChild.CharNameExpandedView.setText(characteristic.getCharacteristicsName());
@@ -320,7 +289,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
 
             if (formatIndex < mSpinnerFormatItems.length){
                 String valueAsciiFormat = formatConversion(valueInBinary,
-                        mSpinnerFormatItems[formatIndex]);
+                        mSpinnerFormatItems[formatIndex], characteristic.getCharacteristicsUUID());
 
                 if (valueAsciiFormat != null) {
                     viewHolderChild.CharValueExpandedView.setText(valueAsciiFormat);
@@ -391,8 +360,6 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
 
     @Override
     public boolean isChildSelectable(int groupPosition, int childPosition) {
-        //System.out.println("isChildSelectable, group/child: "
-//                + groupPosition +"/" + childPosition);
         return true; // what about returning false????
     }
 
@@ -400,7 +367,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
     // the requested format. Notice: Multi-octet fields within the GATT Profile
     // shall be sent least significant octet first (little endian).
     // So valueInBinary[0] is LSB.
-    public String formatConversion(byte[] valueInBinary, String format){
+    public String formatConversion(byte[] valueInBinary, String format, String uuid){
         String convertedValue;
 
         if (Objects.equals(format, "HEX")){
@@ -420,7 +387,18 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
                 Objects.equals(format, "+-INT") || Objects.equals(format, "FLOAT")){
             long signedLongIntValue = 0;
 
-            if (valueInBinary.length > 8){
+            int payloadLength = valueInBinary.length;
+            int payloadStartIndex = 0; // initially start to encode from first byte
+            int payloadStopIndex = valueInBinary.length - 1; // continue to end of the payload
+
+            // todo: create function for solving some profile-specific payloads..
+            if (Objects.equals(uuid,"00002a37-0000-1000-8000-00805f9b34fb") &&
+                    valueInBinary.length > 1){ // heart rate
+                payloadStartIndex = 1; // skip flags-field
+                payloadLength--;
+            }
+
+            if (payloadLength > 8){
                 // 64-bit integer (long) is the biggest supported integer type
                 return null;
             }
@@ -429,7 +407,7 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
             // so store first the byte-buffer as signed long integer.
             // Take also care of 'LSB first'-rule, so for doing easier conversion,
             // start from MSB...
-            for (int i = valueInBinary.length - 1; i >= 0 ; i--) {
+            for (int i = payloadStopIndex; i >= payloadStartIndex ; i--) {
                 // Java does sign-extension (two's complement) automatically any time,
                 // a byte (or short) is converted to int or long,
                 // and the purpose of "& 0xFF" on a byte is to
@@ -442,28 +420,28 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
             if (format.equals("+INT")){
                 // unsigned integer
 
-                // There is no uint-variable available in java,
+                // There is no 'unsigned int'-variable available in java,
                 // but unsigned integer can be presented as string using toUnsignedString();
                 // and string is, what we need here...
                 // Notice: there is no support for Byte.toUnsignedString or
                 // Short.toUnsignedString. So lets convert value from long to integer
                 // when not more than 4 bytes are available to be encoded.
                 // Otherwise lets progress with long.
-                int signedIntValue = 0;
+                int signedIntValue;
 
-                if (valueInBinary.length == 1){ // byte
+                if (payloadLength == 1){ // byte
                     signedIntValue = (int) (signedLongIntValue & 0x000000ff);
                     convertedValue = Integer.toUnsignedString(signedIntValue);
                 }
-                else if (valueInBinary.length == 2){ //short
+                else if (payloadLength == 2){ //short
                     signedIntValue = (int) (signedLongIntValue & 0x0000ffff);
                     convertedValue = Integer.toUnsignedString(signedIntValue);
                 }
-                else if (valueInBinary.length == 3){
+                else if (payloadLength == 3){
                     signedIntValue = (int) (signedLongIntValue & 0x00ffffff);
                     convertedValue = Integer.toUnsignedString(signedIntValue);
                 }
-                else if (valueInBinary.length == 4){ // int
+                else if (payloadLength == 4){ // int
                     signedIntValue = (int) (signedLongIntValue);
                     convertedValue = Integer.toUnsignedString(signedIntValue);
                 }
@@ -472,25 +450,20 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
                 }
             }
             else if (format.equals("+-INT")){
-                // signed integer
-                int signedIntValue = 0;
-
-                if (valueInBinary.length == 1){ // byte
-                    byte signedByteValue = 0;
-                    signedByteValue = (byte) (signedLongIntValue);
+                if (payloadLength == 1){ // byte
+                    byte signedByteValue = (byte) (signedLongIntValue);
                     convertedValue = Byte.toString(signedByteValue);
                 }
-                else if (valueInBinary.length == 2){ //short
-                    short signedShortValue = 0;
-                    signedShortValue = (short) (signedLongIntValue);
+                else if (payloadLength == 2){ //short
+                    short signedShortValue = (short) (signedLongIntValue);
                     convertedValue = Short.toString(signedShortValue);
                 }
-                else if (valueInBinary.length == 3){
-                    signedIntValue = (int) (signedLongIntValue);
+                else if (payloadLength == 3){
+                    int signedIntValue= (int) (signedLongIntValue);
                     convertedValue = Integer.toString(signedIntValue);
                 }
-                else if (valueInBinary.length == 4){ // int
-                    signedIntValue = (int) (signedLongIntValue);
+                else if (payloadLength == 4){ // int
+                    int signedIntValue = (int) (signedLongIntValue);
                     convertedValue = Integer.toString(signedIntValue);
                 }
                 else{
@@ -499,12 +472,12 @@ public class ServicesExpandableListAdapter extends BaseExpandableListAdapter {
             }
             else {
                 // floating number
-                if (valueInBinary.length == 4){
+                if (payloadLength == 4){
                     float f = ByteBuffer.wrap(valueInBinary).
                                             order(ByteOrder.LITTLE_ENDIAN).getFloat();
                     convertedValue = Float.toString(f);
                 }
-                else if (valueInBinary.length == 8){
+                else if (payloadLength == 8){
                     double doubleVal = ByteBuffer.wrap(valueInBinary).
                                                     order(ByteOrder.LITTLE_ENDIAN).getDouble();
                     convertedValue = Double.toString(doubleVal);
