@@ -102,6 +102,13 @@ public class ConnectedFragment extends Fragment {
     }
 
     @Override
+    public void onStart() {
+        super.onStart();
+
+        discoverGattServices();
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
@@ -138,8 +145,6 @@ public class ConnectedFragment extends Fragment {
                         HandleBleConnection(BT_CONNECTION_STATE.DISCONNECTING);
             }
         });
-
-        discoverGattServices();
     }
 
     // This method is called when the fragment is no longer connected to the Activity
@@ -203,6 +208,10 @@ public class ConnectedFragment extends Fragment {
         List<BluetoothGattService> gattServices =  ((MainActivity) requireActivity()).btGatt.getServices();
 
         if (gattServices == null) return;
+
+        serviceModelArrayList.clear();
+        characteristicsModelArrayList.clear();
+        BtCharacteristicsArrayOfArrayList.clear();
 
         for (BluetoothGattService gattService : gattServices) {
             List<BluetoothGattCharacteristic> gattCharacteristics =
